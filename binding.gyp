@@ -15,7 +15,10 @@
                 "./geometry/s2.cc",
                 "./geometry/s1interval.cc",
                 "./geometry/util/math/exactfloat/exactfloat.cc",
+                "./geometry/base/logging.cc",
+                "./geometry/strings/split.cc",
                 "./geometry/strings/strutil.cc",
+                "./geometry/strings/strtoint.cc",
                 "./geometry/strings/stringprintf.cc",
           	    "./geometry/s2cap.cc",
           	    "./geometry/s1angle.cc",
@@ -34,7 +37,6 @@
           	    "./geometry/s2r2rect.cc",
           	    "./geometry/s2region.cc",
           	    "./geometry/s2regioncoverer.cc",
-          	    "./geometry/s2regionintersection.cc",
           	    "./viewfinder/viewfinder.cc"
             ],
             "defines": [
@@ -76,6 +78,31 @@
                     '-Wno-ignored-qualifiers',
                     '-DARCH_K8 -DS2_USE_EXACTFLOAT',
                     '-std=c++11'
+                    ],
+                }],
+                ['OS=="win"', {
+                    'conditions': [
+                      [
+                        'target_arch=="x64"', {
+                          'variables': {
+                            'openssl_root%': '../openssl/x64'
+                          },
+                        }, {
+                           'variables': {
+                             'openssl_root%': '../openssl/x86'
+                            }
+                        }
+                      ]
+                    ],
+                    "sources": [
+                        "./geometry/pthread/pthread.c",
+                    ],
+                    'libraries': [ 
+                      '-l<(openssl_root)/lib/libeay32.lib',
+                      'ws2_32.lib'
+                    ],
+                    'include_dirs': [
+                      '<(openssl_root)/include',
                     ],
                 }]
             ]

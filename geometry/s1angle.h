@@ -3,6 +3,11 @@
 #ifndef UTIL_GEOMETRY_S1ANGLE_H_
 #define UTIL_GEOMETRY_S1ANGLE_H_
 
+#ifdef _WIN32
+#define _USE_MATH_DEFINES
+#include <cmath>
+#endif
+
 #include <iosfwd>
 using std::ostream;
    // to forward declare ostream

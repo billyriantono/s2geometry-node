@@ -53,6 +53,9 @@ class S2LatLng;
 //
 // This class is intended to be copied by value as desired.  It uses
 // the default copy constructor and assignment operator.
+
+// Necessary so that structures containing S2CellId's can be PACKED.
+PACK(
 class S2CellId {
  public:
   // Although only 60 bits are needed to represent the index of a leaf
@@ -312,7 +315,7 @@ class S2CellId {
   inline static S2CellId FromFaceIJSame(int face, int i, int j, bool same_face);
 
   uint64 id_;
-} PACKED;  // Necessary so that structures containing S2CellId's can be PACKED.
+});
 
 inline bool operator==(S2CellId const& x, S2CellId const& y) {
   return x.id() == y.id();

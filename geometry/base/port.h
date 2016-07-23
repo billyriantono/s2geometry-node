@@ -13,12 +13,25 @@
 // // have an implicit 'this' argument, the arguments of such methods
 // // should be counted from two, not one."
 // //
-#define PRINTF_ATTRIBUTE(string_index, first_to_check) \
-    __attribute__((__format__ (__printf__, string_index, first_to_check)))
-
 // //
 // // Prevent the compiler from padding a structure to natural alignment
 // //
-#define PACKED __attribute__ ((packed))
+#ifdef _MSC_VER
+
+    #define PRINTF_ATTRIBUTE(string_index, first_to_check) \
+
+    #define PACK( __Declaration__ ) \
+        __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop) )
+
+
+#elif defined(__GNUC__)
+
+    #define PRINTF_ATTRIBUTE(string_index, first_to_check) \
+        __attribute__((__format__ (__printf__, string_index, first_to_check)))
+
+    #define PACK( __Declaration__ ) \
+        __Declaration__ __attribute__((__packed__))
+
+#endif
 
 #endif  // BASE_PORT_H_

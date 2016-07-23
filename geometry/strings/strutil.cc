@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <float.h>          // for DBL_DIG and FLT_DIG
 #include <math.h>           // for HUGE_VAL
-#include <pthread.h>        // for gmtime_r (on Windows)
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -44,11 +43,13 @@ using std::vector;
 
 #include "split.h"
 
-#ifdef OS_WINDOWS
-#include <pthread.h>        // for gmtime_r
+#ifdef _WIN32
+#include <pthread/pthread.h>        // for gmtime_r
 #ifdef min  // windows.h defines this to something silly
 #undef min
 #endif
+#else
+#include <pthread.h>        // for gmtime_r (on Windows)
 #endif
 
 // ----------------------------------------------------------------------

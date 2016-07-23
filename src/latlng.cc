@@ -1,4 +1,5 @@
 #include "latlng.h"
+#include "point.h"
 
 namespace s2geo {
 using namespace v8;

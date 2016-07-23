@@ -1,7 +1,13 @@
 // Copyright 2008 and onwards Google Inc.  All rights reserved.
 
 #include <limits>
+#include <iterator>
+
+#ifdef _WIN32
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 using std::numeric_limits;
 
 
@@ -9,7 +15,7 @@ using std::numeric_limits;
 #include "base/integral_types.h"
 #include "base/logging.h"
 #include "base/macros.h"
-#include "base/strtoint.h"
+#include "strings/strtoint.h"
 #include "split.h"
 #include "strutil.h"
 #include "util/hash/hash_jenkins_lookup2.h"
@@ -98,17 +104,20 @@ inline uint64 Hash64NumWithSeed(uint64 num, uint64 c) {
   return c;
 }
 
+/* This part doesn't like to compile on windows OR linux
+   Maybe it needs some tweaking before we can use it
+
 #define HASH_TO(arglist, command)                              \
 inline uint32 HashTo32 arglist {                               \
   uint32 retval = command;                                     \
   return retval == kIllegalHash32 ? retval-1 : retval;         \
 }                                                              \
 inline uint16 HashTo16 arglist {                               \
-  uint16 retval16 = command >> 16;    /* take upper 16 bits */ \
+  uint16 retval16 = command >> 16;                             \
   return retval16 == kIllegalHash16 ? retval16-1 : retval16;   \
 }                                                              \
 inline unsigned char HashTo8 arglist {                         \
-  unsigned char retval8 = command >> 24;       /* take upper 8 bits */ \
+  unsigned char retval8 = command >> 24;                       \
   return retval8 == kIllegalHash8 ? retval8-1 : retval8;       \
 }
 
@@ -180,9 +189,8 @@ template<> struct hash<string> : PortableHashBase {
 };
 
 #endif
-
 }  // hash namespace
-
+*/
 
 namespace {
 // NOTE(user): we have to implement our own interator because

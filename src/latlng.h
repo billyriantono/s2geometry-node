@@ -2,9 +2,6 @@
 #define LATLNG_HPP
 
 #include "s2latlng.h"
-#include "point.h"
-#include "s2.h"
-#include "s2latlng.h"
 #include <node.h>
 #include <node_object_wrap.h>
 

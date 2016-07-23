@@ -7,7 +7,7 @@
 #include <errno.h>
 #include "base/port.h"
 #include "base/basictypes.h"
-#include "base/strtoint.h"
+#include "strings/strtoint.h"
 
 // Replacement strto[u]l functions that have identical overflow and underflow
 // characteristics for both ILP-32 and LP-64 platforms, including errno
