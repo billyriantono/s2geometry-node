@@ -3,7 +3,7 @@
 #include "s2cellid.h"
 
 #ifdef _WIN32
-#include <include/pthread.h>
+#include <pthread/pthread.h>
 #else
 #include <pthread.h>
 #endif
@@ -265,8 +265,6 @@ S2CellId S2CellId::FromPoint(S2Point const& p) {
 S2CellId S2CellId::FromLatLng(S2LatLng const& ll) {
   return FromPoint(ll.ToPoint());
 }
-
-#include<stdio.h>
 
 int S2CellId::ToFaceIJOrientation(int* pi, int* pj, int* orientation) const {
   // Initialization if not done yet

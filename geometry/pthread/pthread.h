@@ -314,7 +314,7 @@ enum {
 #  endif
 #endif
 
-#include <include/sched.h>
+#include <pthread/sched.h>
 
 /*
  * To avoid including windows.h we define only those things that we
@@ -333,6 +333,10 @@ enum {
 #endif
 
 #endif /* PTW32_LEVEL >= PTW32_LEVEL_MAX */
+
+#ifndef HAVE_STRUCT_TIMESPEC
+#define HAVE_STRUCT_TIMESPEC 1
+#endif /* HAVE_STRUCT_TIMESPEC */
 
 #ifndef SIG_BLOCK
 #define SIG_BLOCK 0

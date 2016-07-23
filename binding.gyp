@@ -94,8 +94,12 @@
                         }
                       ]
                     ],
+                    "sources": [
+                        "./geometry/pthread/pthread.c",
+                    ],
                     'libraries': [ 
                       '-l<(openssl_root)/lib/libeay32.lib',
+                      'ws2_32.lib'
                     ],
                     'include_dirs': [
                       '<(openssl_root)/include',

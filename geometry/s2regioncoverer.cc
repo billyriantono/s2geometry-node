@@ -3,7 +3,7 @@
 #include "s2regioncoverer.h"
 
 #ifdef _WIN32
-#include <include/pthread.h>
+#include <pthread/pthread.h>
 #else
 #include <pthread.h>
 #endif

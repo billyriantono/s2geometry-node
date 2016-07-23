@@ -44,7 +44,7 @@ using std::vector;
 #include "split.h"
 
 #ifdef _WIN32
-#include <include/pthread.h>        // for gmtime_r
+#include <pthread/pthread.h>        // for gmtime_r
 #ifdef min  // windows.h defines this to something silly
 #undef min
 #endif
