@@ -1,5 +1,12 @@
 var s2 = require('../');
 
+var kEarthCircumferenceMeters = 1000 * 40075.017;
+
+function EarthMetersToRadians(meters) {
+  return (2 * Math.PI) * (meters / kEarthCircumferenceMeters);
+}
+
+
 var origin = new s2.S2CellId(new s2.S2LatLng(44.0378862, 10.0458712));
 
 console.log(origin.parent(15).id());
@@ -25,7 +32,28 @@ var maxLevel = 10;
 var maxCells = 20;
 var levelMod = 2;
 var results = region.getCovering(latLngRect, minLevel, maxLevel, maxCells, levelMod);
+
+console.log("getCovering with latLngRect")
 for(var i = 0; i < results.length; i++)
 {
-	console.log(results[i].id())
+	console.log(results[i].id() + "," + results[i].rangeMin().id() + "," + results[i].rangeMax().id())
 }
+
+var radius_meters = 1000000;
+var radius_radians = EarthMetersToRadians(radius_meters)
+var axis_height = (radius_radians * radius_radians) / 2;
+var cap = new s2.S2Cap(latLngLA.normalized().toPoint(), axis_height);
+results = region.getCovering(cap, minLevel, maxLevel, maxCells, levelMod);
+console.log("getCovering with cap")
+for(var i = 0; i < results.length; i++)
+{
+	console.log(results[i].id() + "," + results[i].rangeMin().id() + "," + results[i].rangeMax().id())
+}
+
+
+console.log("getCovering with cell")
+for(var i = 0; i < results.length; i++)
+{
+	console.log(results[i].id() + "," + results[i].rangeMin().id() + "," + results[i].rangeMax().id())
+}
+

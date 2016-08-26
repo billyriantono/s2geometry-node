@@ -110,8 +110,6 @@ void RegionCoverer::GetCovering(const FunctionCallbackInfo<Value>& args) {
 	vector<S2CellId> covering;
 
 	int argsLength = args.Length();
-	S2LatLngRect region = node::ObjectWrap::Unwrap<LatLngRect>(args[0]->ToObject())->get();
-
 	S2RegionCoverer *cover = new S2RegionCoverer();
 	
 	if(argsLength >= 2 && args[1]->IsNumber())
@@ -123,10 +121,30 @@ void RegionCoverer::GetCovering(const FunctionCallbackInfo<Value>& args) {
 	if(argsLength >= 5 && args[4]->IsNumber())
 		cover->set_level_mod(args[4]->ToNumber()->Value());
 
-	cover->GetCovering(region, &covering);
-	
-	
-  	Local<Array> cellIDs = Array::New(Isolate::GetCurrent(), covering.size());
+	Isolate* isolate = args.GetIsolate();
+	Local<FunctionTemplate> latLngRect = Local<FunctionTemplate>::New(isolate,LatLngRect::constructor);
+
+	Local<FunctionTemplate> cap = Local<FunctionTemplate>::New(isolate,Cap::constructor);
+
+	Local<FunctionTemplate> cell = Local<FunctionTemplate>::New(isolate,Cell::constructor);
+
+	Local<Object> fromObj = args[0]->ToObject();
+	if(latLngRect->HasInstance(fromObj))
+	{
+		S2LatLngRect region = node::ObjectWrap::Unwrap<LatLngRect>(fromObj)->get();
+		cover->GetCovering(region, &covering);
+	}
+	else if(cap->HasInstance(fromObj))
+	{
+		S2Cap region = node::ObjectWrap::Unwrap<Cap>(fromObj)->get();
+		cover->GetCovering(region, &covering);
+	}
+	else if(cell->HasInstance(fromObj))
+	{
+		S2Cell region = node::ObjectWrap::Unwrap<Cell>(fromObj)->get();
+		cover->GetCovering(region, &covering);
+	}
+  	Local<Array> cellIDs = Array::New(isolate, covering.size());
 
 
 	for (int ii = 0; ii < covering.size(); ++ii) {
