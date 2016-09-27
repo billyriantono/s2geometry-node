@@ -7,6 +7,7 @@
 #include "cap.h"
 #include "interval.h"
 #include "angle.h"
+#include "regioncoverer.h"
 
 
 using namespace v8;
@@ -20,6 +21,7 @@ void InitAll(Local<Object> exports) {
     Cell::Init(exports);
     Interval::Init(exports);
     Angle::Init(exports);
+    RegionCoverer::Init(exports);
 }
 
 NODE_MODULE(NativeExtension, InitAll)

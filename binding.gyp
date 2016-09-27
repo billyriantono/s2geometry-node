@@ -12,6 +12,7 @@
                 "src/cap.cc",
                 "src/interval.cc",
                 "src/angle.cc",
+                "src/regioncoverer.cc",
                 "./geometry/s2.cc",
                 "./geometry/s1interval.cc",
                 "./geometry/util/math/exactfloat/exactfloat.cc",
