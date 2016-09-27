@@ -48,6 +48,7 @@ Some of the S2 API is not wrapped because it isn't meant to be exposed in this w
 * [gos2](https://code.google.com/p/gos2/) - very incomplete port to Go
 * [s2-geometry-php](https://github.com/eelf/s2-geometry-library-php) - another very incomplete port to PHP
 * [mapbox/node-s2](https://github.com/mapbox/node-s2)
+* [nodes2ts](https://github.com/vekexasia/nodes2-ts)
 
 ## Thanks
 * mapbox team
