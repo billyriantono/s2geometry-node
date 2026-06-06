@@ -21,6 +21,8 @@ protected:
     static NAN_METHOD(X);
     static NAN_METHOD(Y);
     static NAN_METHOD(Z);
+    static NAN_METHOD(ToArray);
+    static NAN_METHOD(ToString);
 
     S2Point this_;
 };

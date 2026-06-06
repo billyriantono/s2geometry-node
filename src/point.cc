@@ -13,6 +13,8 @@ NAN_MODULE_INIT(Point::Init) {
     Nan::SetPrototypeMethod(tpl, "x", X);
     Nan::SetPrototypeMethod(tpl, "y", Y);
     Nan::SetPrototypeMethod(tpl, "z", Z);
+    Nan::SetPrototypeMethod(tpl, "toArray", ToArray);
+    Nan::SetPrototypeMethod(tpl, "toString", ToString);
 
     constructor.Reset(tpl);
 
@@ -83,6 +85,23 @@ NAN_METHOD(Point::Y) {
 NAN_METHOD(Point::Z) {
     Point* obj = Nan::ObjectWrap::Unwrap<Point>(info.Holder());
     info.GetReturnValue().Set(Nan::New(obj->this_.z()));
+}
+
+NAN_METHOD(Point::ToArray) {
+    Point* obj = Nan::ObjectWrap::Unwrap<Point>(info.Holder());
+    v8::Local<v8::Array> arr = Nan::New<v8::Array>(3);
+    Nan::Set(arr, 0, Nan::New(obj->this_.x()));
+    Nan::Set(arr, 1, Nan::New(obj->this_.y()));
+    Nan::Set(arr, 2, Nan::New(obj->this_.z()));
+    info.GetReturnValue().Set(arr);
+}
+
+NAN_METHOD(Point::ToString) {
+    Point* obj = Nan::ObjectWrap::Unwrap<Point>(info.Holder());
+    char buf[128];
+    snprintf(buf, sizeof(buf), "[%g, %g, %g]",
+        obj->this_.x(), obj->this_.y(), obj->this_.z());
+    info.GetReturnValue().Set(Nan::New(buf).ToLocalChecked());
 }
 
 }

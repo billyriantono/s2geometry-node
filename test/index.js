@@ -46,6 +46,24 @@ describe('S2LatLng', function () {
         assert(Math.abs(back.lat - SF.lat) < 1e-6);
         assert(Math.abs(back.lng - SF.lng) < 1e-6);
     });
+
+    it('handles the dateline (lng = 180 / -180)', function () {
+        var east = new s2.S2LatLng(0, 180);
+        var west = new s2.S2LatLng(0, -180);
+        assert.strictEqual(east.isValid(), true);
+        assert.strictEqual(west.isValid(), true);
+        // distance across the dateline at the equator is ~0 degrees
+        assert(east.distance(west) < 0.01);
+    });
+
+    it('handles the poles (lat = +/-90)', function () {
+        var north = new s2.S2LatLng(90, 0);
+        var south = new s2.S2LatLng(-90, 0);
+        assert.strictEqual(north.isValid(), true);
+        assert.strictEqual(south.isValid(), true);
+        // distance between the poles is 180 degrees
+        assert(Math.abs(north.distance(south) - 180) < 1e-9);
+    });
 });
 
 describe('S2Point', function () {
@@ -54,6 +72,28 @@ describe('S2Point', function () {
         assert.strictEqual(typeof p.x(), 'number');
         assert.strictEqual(typeof p.y(), 'number');
         assert.strictEqual(typeof p.z(), 'number');
+    });
+
+    it('can be built directly from raw x,y,z', function () {
+        var p = new s2.S2Point(1, 0, 0);
+        assert.strictEqual(p.x(), 1);
+        assert.strictEqual(p.y(), 0);
+        assert.strictEqual(p.z(), 0);
+    });
+
+    it('exposes toArray()', function () {
+        var p = new s2.S2LatLng(SF.lat, SF.lng).toPoint();
+        var arr = p.toArray();
+        assert(Array.isArray(arr));
+        assert.strictEqual(arr.length, 3);
+        assert.strictEqual(arr[0], p.x());
+        assert.strictEqual(arr[1], p.y());
+        assert.strictEqual(arr[2], p.z());
+    });
+
+    it('exposes toString() in [x, y, z] form', function () {
+        var p = new s2.S2Point(1, 0, 0);
+        assert.strictEqual(p.toString(), '[1, 0, 0]');
     });
 });
 
@@ -174,6 +214,26 @@ describe('S2CellId', function () {
         assert.strictEqual(ij.i, 1 << 29);
         assert.strictEqual(ij.j, 1 << 29);
     });
+
+    it('idString matches id (both stringified decimal)', function () {
+        var cellId = new s2.S2CellId(new s2.S2LatLng(SF.lat, SF.lng));
+        assert.strictEqual(cellId.idString(), cellId.id());
+    });
+
+    it('child_begin and child_end bracket the children at the next level', function () {
+        var parent = new s2.S2CellId(new s2.S2LatLng(SF.lat, SF.lng)).parent(10);
+        var begin = parent.child_begin();
+        var end = parent.child_end();
+        assert.strictEqual(begin.level(), 11);
+        assert.strictEqual(end.level(), 11);
+        assert.notStrictEqual(begin.id(), end.id());
+    });
+
+    it('parent at the current level returns self', function () {
+        var cellId = new s2.S2CellId(new s2.S2LatLng(SF.lat, SF.lng)).parent(10);
+        var sameLevelParent = cellId.parent(10);
+        assert.strictEqual(sameLevelParent.id(), cellId.id());
+    });
 });
 
 describe('S2Cell', function () {
@@ -213,6 +273,21 @@ describe('S2Cell', function () {
         // rest of the sphere); this is a robust functional check that doesn't
         // depend on floating-point self-comparison.
         assert.strictEqual(cap.contains(cap.complement()), false);
+    });
+
+    it('can be constructed from an S2CellId', function () {
+        var id = new s2.S2CellId(new s2.S2LatLng(SF.lat, SF.lng)).parent(10);
+        var cell = new s2.S2Cell(id);
+        assert.strictEqual(cell.level(), 10);
+        assert.strictEqual(cell.face(), id.face());
+    });
+
+    it('exposes id() as an S2CellId', function () {
+        var cell = new s2.S2Cell(new s2.S2LatLng(SF.lat, SF.lng));
+        var id = cell.id();
+        assert.strictEqual(typeof id.toToken, 'function');
+        assert.strictEqual(typeof id.level, 'function');
+        assert.strictEqual(id.level(), cell.level());
     });
 });
 
