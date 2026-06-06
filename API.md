@@ -406,6 +406,17 @@ iterator would need to be tested using "<" rather that the usual "!=".
 
 The 64-bit unique identifier for this cell.
 
+## cellid.face() -> number
+
+Return the face (0..5) of the S2 cube containing this cell.
+
+## cellid.toFaceIJ() -> { face, i, j, orientation }
+
+Return the raw `(face, i, j, orientation)` tuple that underlies this cell id.
+`i` and `j` are 30-bit integers; `orientation` is a 2-bit Hilbert-curve
+orientation. Useful for debugging coordinate-conversion pipelines against
+other S2 ports.
+
 # s2.getCovering(S2LatLng[] | S2LatLngRect | S2Cap | S2Cell, options)
 
 Get a covering, expressed as CellIds, for a given region. If an array

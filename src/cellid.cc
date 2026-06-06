@@ -37,6 +37,8 @@ NAN_MODULE_INIT(CellId::Init) {
   Nan::SetPrototypeMethod(tpl, "child", Child);
   Nan::SetPrototypeMethod(tpl, "children", Children);
   Nan::SetPrototypeMethod(tpl, "contains", Contains);
+  Nan::SetPrototypeMethod(tpl, "face", Face);
+  Nan::SetPrototypeMethod(tpl, "toFaceIJ", ToFaceIJ);
 
   constructor.Reset(tpl);
 
@@ -241,5 +243,24 @@ NAN_METHOD(CellId::Child) {
 NAN_METHOD(CellId::ToLatLng) {
     CellId* obj = Nan::ObjectWrap::Unwrap<CellId>(info.Holder());
     info.GetReturnValue().Set(LatLng::CreateNew(info, obj->this_.ToLatLng()));
+}
+
+NAN_METHOD(CellId::Face) {
+    CellId* obj = Nan::ObjectWrap::Unwrap<CellId>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.face()));
+}
+
+// Exposes the (face, i, j, orientation) tuple that underlies the cell id.
+// Useful for debugging coordinate conversions against another S2 port.
+NAN_METHOD(CellId::ToFaceIJ) {
+    CellId* obj = Nan::ObjectWrap::Unwrap<CellId>(info.Holder());
+    int i, j, orientation;
+    int face = obj->this_.ToFaceIJOrientation(&i, &j, &orientation);
+    v8::Local<v8::Object> result = Nan::New<v8::Object>();
+    Nan::Set(result, Nan::New("face").ToLocalChecked(), Nan::New(face));
+    Nan::Set(result, Nan::New("i").ToLocalChecked(), Nan::New(i));
+    Nan::Set(result, Nan::New("j").ToLocalChecked(), Nan::New(j));
+    Nan::Set(result, Nan::New("orientation").ToLocalChecked(), Nan::New(orientation));
+    info.GetReturnValue().Set(result);
 }
 }

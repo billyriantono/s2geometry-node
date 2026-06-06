@@ -146,6 +146,34 @@ describe('S2CellId', function () {
         assert(Math.abs(roundTrip.lat - SF.lat) < 1e-6);
         assert(Math.abs(roundTrip.lng - SF.lng) < 1e-6);
     });
+
+    // Issue #15: expose internal S2 coordinate values for debugging ports.
+    it('exposes face() and toFaceIJ() for coordinate debugging (#15)', function () {
+        var cellId = new s2.S2CellId(new s2.S2LatLng(SF.lat, SF.lng)).parent(10);
+
+        var face = cellId.face();
+        assert.strictEqual(typeof face, 'number');
+        assert(face >= 0 && face < 6, 'face should be 0..5');
+
+        var ij = cellId.toFaceIJ();
+        assert.strictEqual(ij.face, face, 'toFaceIJ().face should match face()');
+        assert.strictEqual(typeof ij.i, 'number');
+        assert.strictEqual(typeof ij.j, 'number');
+        assert.strictEqual(typeof ij.orientation, 'number');
+        // i and j are 30-bit integers at leaf level
+        assert(ij.i >= 0 && ij.i < (1 << 30));
+        assert(ij.j >= 0 && ij.j < (1 << 30));
+        // orientation is a 2-bit value (Hilbert curve orientation)
+        assert(ij.orientation >= 0 && ij.orientation < 4);
+    });
+
+    it('toFaceIJ on a face cell reports i=j=2^29 (cell center)', function () {
+        var faceCell = new s2.S2CellId(new s2.S2LatLng(SF.lat, SF.lng)).parent(0);
+        assert.strictEqual(faceCell.isFace(), true);
+        var ij = faceCell.toFaceIJ();
+        assert.strictEqual(ij.i, 1 << 29);
+        assert.strictEqual(ij.j, 1 << 29);
+    });
 });
 
 describe('S2Cell', function () {

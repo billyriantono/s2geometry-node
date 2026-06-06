@@ -45,6 +45,8 @@ protected:
     static NAN_METHOD(IdString);
     static NAN_METHOD(Child);
     static NAN_METHOD(Contains);
+    static NAN_METHOD(Face);
+    static NAN_METHOD(ToFaceIJ);
 
     S2CellId this_;
 };
