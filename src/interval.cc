@@ -1,120 +1,111 @@
 #include "interval.h"
 
-namespace s2geo{
-using namespace v8;
+namespace s2geo {
 
-Persistent<FunctionTemplate> Interval::constructor;
+Nan::Persistent<v8::FunctionTemplate> Interval::constructor;
 
-void Interval::Init(Local<Object> exports) {
-     Isolate* isolate = exports->GetIsolate();
+NAN_MODULE_INIT(Interval::Init) {
+    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+    tpl->SetClassName(Nan::New("S1Interval").ToLocalChecked());
+    tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-     // Prepare constructor template
-      Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-      tpl->SetClassName(String::NewFromUtf8(isolate, "S1Interval"));
-      tpl->InstanceTemplate()->SetInternalFieldCount(1);
+    // Prototype methods
+    Nan::SetPrototypeMethod(tpl, "length", GetLength);
+    Nan::SetPrototypeMethod(tpl, "hi", GetHi);
+    Nan::SetPrototypeMethod(tpl, "lo", GetLo);
+    Nan::SetPrototypeMethod(tpl, "center", GetCenter);
+    Nan::SetPrototypeMethod(tpl, "complementLength", GetComplementCenter);
+    Nan::SetPrototypeMethod(tpl, "contains", Contains);
 
-      // Prototype
-        NODE_SET_PROTOTYPE_METHOD(tpl, "length", GetLength);
-        NODE_SET_PROTOTYPE_METHOD(tpl, "hi", GetHi);
-        NODE_SET_PROTOTYPE_METHOD(tpl, "lo", GetLo);
-        NODE_SET_PROTOTYPE_METHOD(tpl, "center", GetCenter);
-        NODE_SET_PROTOTYPE_METHOD(tpl, "complementLength", GetComplementCenter);
-        NODE_SET_PROTOTYPE_METHOD(tpl, "contains", Contains);
+    constructor.Reset(tpl);
 
-      constructor.Reset(isolate, tpl);
-      exports->Set(String::NewFromUtf8(isolate, "S1Interval"),
-                   tpl->GetFunction());
+    Nan::Set(target,
+             Nan::New("S1Interval").ToLocalChecked(),
+             Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-Interval::Interval()
-    : ObjectWrap(),
-      this_() {}
+Interval::Interval() : this_() {}
 
-void Interval::New(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
+NAN_METHOD(Interval::New) {
+    if (info.IsConstructCall()) {
+        if (info[0]->IsExternal()) {
+            v8::Local<v8::External> ext = info[0].As<v8::External>();
+            void* ptr = ext->Value();
+            Interval* ll = static_cast<Interval*>(ptr);
+            ll->Wrap(info.This());
+            info.GetReturnValue().Set(info.This());
+            return;
+        }
 
-    if (!args.IsConstructCall()) {
-        isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "Use the new operator to create instances of this object.")));
-        return;
+        if (info.Length() != 1) {
+            Nan::ThrowTypeError("(number) required.");
+            return;
+        }
+
+        Interval* obj = new Interval();
+        obj->Wrap(info.This());
+        obj->this_ = S1Interval::FromPoint(Nan::To<double>(info[0]).FromJust());
+        info.GetReturnValue().Set(info.This());
+    } else {
+        const int argc = 1;
+        v8::Local<v8::Value> argv[argc] = { info[0] };
+        v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+        info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked());
     }
+}
 
-    if (args[0]->IsExternal()) {
-        Local<External> ext = Local<External>::Cast(args[0]);
-        void* ptr = ext->Value();
-        Interval* ll = static_cast<Interval*>(ptr);
-        ll->Wrap(args.This());
-        args.GetReturnValue().Set(args.This());
-        return;
-    }
-
-    if (args.Length() != 1) {
-       isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "(number) required.")));
-        return;
-    }
+v8::Local<v8::Object> Interval::CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info, S1Interval s1interval) {
+    Nan::EscapableHandleScope scope;
 
     Interval* obj = new Interval();
+    obj->this_ = s1interval;
 
-    obj->Wrap(args.This());
+    v8::Local<v8::Value> ext = Nan::New<v8::External>(obj);
+    v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+    v8::Local<v8::Object> instance = Nan::NewInstance(cons, 1, &ext).ToLocalChecked();
 
-    obj->this_ = S1Interval::FromPoint(args[0]->ToNumber()->Value());
-
-    args.GetReturnValue().Set(args.This());
+    return scope.Escape(instance);
 }
 
-Local<Object> Interval::CreateNew(const FunctionCallbackInfo<Value>& args, S1Interval s1angle) {
-    Isolate* isolate = args.GetIsolate();
-    Interval* obj = new Interval();
-    obj->this_ = s1angle;
-    Local<Value> ext = External::New(isolate,obj);
-    Local<Context> context = isolate->GetCurrentContext();
-    Local<FunctionTemplate> cons = Local<FunctionTemplate>::New(isolate,constructor);
-    Local<Object> handleObject = cons->GetFunction()->NewInstance(context, 1, &ext).ToLocalChecked();
-    return handleObject;
+NAN_METHOD(Interval::GetLength) {
+    Interval* obj = Nan::ObjectWrap::Unwrap<Interval>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.GetLength()));
 }
 
-void Interval::GetLength(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Interval* obj = ObjectWrap::Unwrap<Interval>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.GetLength()));
+NAN_METHOD(Interval::GetCenter) {
+    Interval* obj = Nan::ObjectWrap::Unwrap<Interval>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.GetCenter()));
 }
 
-void Interval::GetCenter(const FunctionCallbackInfo<Value>& args){
-    Isolate* isolate = args.GetIsolate();
-    Interval* obj = ObjectWrap::Unwrap<Interval>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.GetCenter()));
+NAN_METHOD(Interval::GetComplementCenter) {
+    Interval* obj = Nan::ObjectWrap::Unwrap<Interval>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.GetComplementCenter()));
 }
 
-void Interval::GetComplementCenter(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Interval* obj = ObjectWrap::Unwrap<Interval>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.GetComplementCenter()));
+NAN_METHOD(Interval::GetHi) {
+    Interval* obj = Nan::ObjectWrap::Unwrap<Interval>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.hi()));
 }
 
-void Interval::GetHi(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Interval* obj = ObjectWrap::Unwrap<Interval>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.hi()));
+NAN_METHOD(Interval::GetLo) {
+    Interval* obj = Nan::ObjectWrap::Unwrap<Interval>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.lo()));
 }
 
-void Interval::GetLo(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Interval* obj = ObjectWrap::Unwrap<Interval>(args.This());
-    args.GetReturnValue().Set(Number::New(isolate, obj->this_.lo()));
-}
+NAN_METHOD(Interval::Contains) {
+    Interval* obj = Nan::ObjectWrap::Unwrap<Interval>(info.Holder());
 
-void Interval::Contains(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Interval* obj = ObjectWrap::Unwrap<Interval>(args.This());
-    if (args.Length() != 1) {
-        isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "(number) required.")));
+    if (info.Length() != 1) {
+        Nan::ThrowTypeError("(number) required.");
+        return;
     }
-    if (!args[0]->IsNumber()) {
-       isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "(number) required.")));
+
+    if (!info[0]->IsNumber()) {
+        Nan::ThrowTypeError("(number) required.");
+        return;
     }
-    args.GetReturnValue().Set(Boolean::New(isolate,obj->this_.Contains(args[0]->ToNumber()->Value())));
+
+    info.GetReturnValue().Set(Nan::New(obj->this_.Contains(Nan::To<double>(info[0]).FromJust())));
 }
+
 }

@@ -1,158 +1,104 @@
 #include "regioncoverer.h"
 #include "latlngrect.h"
+#include "cap.h"
+#include "cell.h"
+#include "cellid.h"
+
 namespace s2geo {
 
-using namespace v8;
+Nan::Persistent<v8::FunctionTemplate> RegionCoverer::constructor;
 
-using v8::Context;
-using v8::Function;
-using v8::FunctionCallbackInfo;
-using v8::FunctionTemplate;
-using v8::Isolate;
-using v8::Local;
-using v8::Number;
-using v8::Object;
-using v8::Persistent;
-using v8::String;
-using v8::Value;
+RegionCoverer::RegionCoverer() {}
 
-Persistent<FunctionTemplate> RegionCoverer::constructor;
+RegionCoverer::~RegionCoverer() {}
 
-RegionCoverer::RegionCoverer()
-    : ObjectWrap(){}
+NAN_MODULE_INIT(RegionCoverer::Init) {
+    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+    tpl->SetClassName(Nan::New("S2RegionCoverer").ToLocalChecked());
+    tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-RegionCoverer::~RegionCoverer() {
+    // Prototype methods
+    Nan::SetPrototypeMethod(tpl, "getCovering", GetCovering);
+
+    constructor.Reset(tpl);
+
+    Nan::Set(target,
+             Nan::New("S2RegionCoverer").ToLocalChecked(),
+             Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-void RegionCoverer::Init(Local<Object> exports) {
-  Isolate* isolate = exports->GetIsolate();
-
-  // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "S2RegionCoverer"));
-  tpl->InstanceTemplate()->SetInternalFieldCount(1);
-
-  // Prototype
-
-
-	NODE_SET_PROTOTYPE_METHOD(tpl, "getCovering", GetCovering);
-    //NODE_SET_PROTOTYPE_METHOD(tpl, "setMaxLevel", SetMaxLevel);
-    //NODE_SET_PROTOTYPE_METHOD(tpl, "getMaxLevel", GetMaxLevel);
-   /* NODE_SET_PROTOTYPE_METHOD(tpl, "setMinLevel", SetMinLevel);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "minLevel", MinLevel);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "setLevelMod", SetLevelMod);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "levelMod", LevelMod);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getSimpleCovering", GetSimpleCovering);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getInteriorCellUnion", GetInteriorCellUnion);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getCellUnion", GetCellUnion);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getInteriorCovering", GetInteriorCovering);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getCovering", GetCovering);
-	*/
-
-
-  constructor.Reset(isolate, tpl);
-  exports->Set(String::NewFromUtf8(isolate, "S2RegionCoverer"),
-               tpl->GetFunction());
-}
-void RegionCoverer::New(const FunctionCallbackInfo<Value>& args) {
-   Isolate* isolate = args.GetIsolate();
-	if (!args.IsConstructCall()) {
-		isolate->ThrowException(Exception::TypeError(
-						String::NewFromUtf8(isolate, "Use the new operator to create instances of this object.")));
-					return;
-	}
-
-	//RegionCoverer* obj = new RegionCoverer();
-	args.GetReturnValue().Set(args.This());
+NAN_METHOD(RegionCoverer::New) {
+    if (info.IsConstructCall()) {
+        RegionCoverer* obj = new RegionCoverer();
+        obj->Wrap(info.This());
+        info.GetReturnValue().Set(info.This());
+    } else {
+        v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+        info.GetReturnValue().Set(Nan::NewInstance(cons, 0, NULL).ToLocalChecked());
+    }
 }
 
-v8::Local<Object> RegionCoverer::CreateNew(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
+v8::Local<v8::Object> RegionCoverer::CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info) {
+    Nan::EscapableHandleScope scope;
+
     RegionCoverer* obj = new RegionCoverer();
-    v8::Local<Value> ext = External::New(isolate,obj);
-    v8::Local<Context> context = isolate->GetCurrentContext();
-    v8::Local<FunctionTemplate> cons = v8::Local<FunctionTemplate>::New(isolate,constructor);
-    v8::Local<Object> handleObject = cons->GetFunction()->NewInstance(context, 1, &ext).ToLocalChecked();
-    return handleObject;
-}
+    v8::Local<v8::Value> ext = Nan::New<v8::External>(obj);
+    v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+    v8::Local<v8::Object> instance = Nan::NewInstance(cons, 1, &ext).ToLocalChecked();
 
-/*
-void RegionCoverer::SetMaxLevel(const FunctionCallbackInfo<Value>& args) {
- 	Isolate* isolate = args.GetIsolate();
-    RegionCoverer* obj = node::ObjectWrap::Unwrap<RegionCoverer>(args.Holder());
-	if(args.Length() != 1){
-    	isolate->ThrowException(Exception::TypeError(
-        	String::NewFromUtf8(isolate, "Wrong number of arguments")));
-		return
-	}
- 	if (!args[0]->IsNumber()) {
-    	isolate->ThrowException(Exception::TypeError(
-        String::NewFromUtf8(isolate, "Wrong arguments")));
-    	return;
-  	}
-    obj->this_.set_max_level(args[0]->NumberValue());
+    return scope.Escape(instance);
 }
-void RegionCoverer::GetMaxLevel(const FunctionCallbackInfo<Value>& args) {
- 	Isolate* isolate = args.GetIsolate();
-    RegionCoverer* obj = ObjectWrap::Unwrap<RegionCoverer>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.max_level()));
-}
-*/
 
 string CellToString(const S2CellId& id) {
-  return StringPrintf("%d:%s", id.level(), id.ToToken().c_str());
+    return StringPrintf("%d:%s", id.level(), id.ToToken().c_str());
 }
 
-void RegionCoverer::GetCovering(const FunctionCallbackInfo<Value>& args) {
- 	//Isolate* isolate = args.GetIsolate();
-    //RegionCoverer* obj = ObjectWrap::Unwrap<RegionCoverer>(args.Holder());
+NAN_METHOD(RegionCoverer::GetCovering) {
+    vector<S2CellId> covering;
 
-	vector<S2CellId> covering;
+    int argsLength = info.Length();
+    S2RegionCoverer *cover = new S2RegionCoverer();
 
-	int argsLength = args.Length();
-	S2RegionCoverer *cover = new S2RegionCoverer();
-	
-	if(argsLength >= 2 && args[1]->IsNumber())
-		cover->set_min_level(args[1]->ToNumber()->Value());
-	if(argsLength >= 3 && args[2]->IsNumber())
-		cover->set_max_level(args[2]->ToNumber()->Value());
-	if(argsLength >= 4 && args[3]->IsNumber())
-		cover->set_max_cells(args[3]->ToNumber()->Value());
-	if(argsLength >= 5 && args[4]->IsNumber())
-		cover->set_level_mod(args[4]->ToNumber()->Value());
+    // Set optional parameters
+    if (argsLength >= 2 && info[1]->IsNumber())
+        cover->set_min_level(Nan::To<int32_t>(info[1]).FromJust());
+    if (argsLength >= 3 && info[2]->IsNumber())
+        cover->set_max_level(Nan::To<int32_t>(info[2]).FromJust());
+    if (argsLength >= 4 && info[3]->IsNumber())
+        cover->set_max_cells(Nan::To<int32_t>(info[3]).FromJust());
+    if (argsLength >= 5 && info[4]->IsNumber())
+        cover->set_level_mod(Nan::To<int32_t>(info[4]).FromJust());
 
-	Isolate* isolate = args.GetIsolate();
-	Local<FunctionTemplate> latLngRect = Local<FunctionTemplate>::New(isolate,LatLngRect::constructor);
+    // Get the persistent constructors
+    v8::Local<v8::FunctionTemplate> latLngRect = Nan::New(LatLngRect::constructor);
+    v8::Local<v8::FunctionTemplate> cap = Nan::New(Cap::constructor);
+    v8::Local<v8::FunctionTemplate> cell = Nan::New(Cell::constructor);
 
-	Local<FunctionTemplate> cap = Local<FunctionTemplate>::New(isolate,Cap::constructor);
+    v8::Local<v8::Object> fromObj = Nan::To<v8::Object>(info[0]).ToLocalChecked();
 
-	Local<FunctionTemplate> cell = Local<FunctionTemplate>::New(isolate,Cell::constructor);
+    // Check instance type and get covering
+    if (latLngRect->HasInstance(fromObj)) {
+        S2LatLngRect region = Nan::ObjectWrap::Unwrap<LatLngRect>(fromObj)->get();
+        cover->GetCovering(region, &covering);
+    }
+    else if (cap->HasInstance(fromObj)) {
+        S2Cap region = Nan::ObjectWrap::Unwrap<Cap>(fromObj)->get();
+        cover->GetCovering(region, &covering);
+    }
+    else if (cell->HasInstance(fromObj)) {
+        S2Cell region = Nan::ObjectWrap::Unwrap<Cell>(fromObj)->get();
+        cover->GetCovering(region, &covering);
+    }
 
-	Local<Object> fromObj = args[0]->ToObject();
-	if(latLngRect->HasInstance(fromObj))
-	{
-		S2LatLngRect region = node::ObjectWrap::Unwrap<LatLngRect>(fromObj)->get();
-		cover->GetCovering(region, &covering);
-	}
-	else if(cap->HasInstance(fromObj))
-	{
-		S2Cap region = node::ObjectWrap::Unwrap<Cap>(fromObj)->get();
-		cover->GetCovering(region, &covering);
-	}
-	else if(cell->HasInstance(fromObj))
-	{
-		S2Cell region = node::ObjectWrap::Unwrap<Cell>(fromObj)->get();
-		cover->GetCovering(region, &covering);
-	}
-  	Local<Array> cellIDs = Array::New(isolate, covering.size());
+    // Create array of cell IDs
+    v8::Local<v8::Array> cellIDs = Nan::New<v8::Array>(covering.size());
 
+    for (size_t ii = 0; ii < covering.size(); ++ii) {
+        Nan::Set(cellIDs, ii, CellId::CreateNew(info, covering[ii]));
+    }
 
-	for (int ii = 0; ii < covering.size(); ++ii) {
-		cellIDs->Set(ii, CellId::CreateNew(args, covering[ii]));
-	}
-
-  	args.GetReturnValue().Set(cellIDs);
-	
+    delete cover;
+    info.GetReturnValue().Set(cellIDs);
 }
 
 }

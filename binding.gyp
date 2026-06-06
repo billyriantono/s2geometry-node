@@ -46,6 +46,7 @@
                 '_GNU_SOURCE'
             ],
             "include_dirs": [
+                "<!(node -e \"require('nan')\")",
                 "./viewfinder/",
                 "./geometry/",
                 "./geometry/base/",
@@ -85,25 +86,15 @@
                     ],
                 }],
                 ['OS=="win"', {
-                    'conditions': [
-                      [
-                        'target_arch=="x64"', {
-                          'variables': {
-                            'openssl_root%': '../openssl/x64'
-                          },
-                        }, {
-                           'variables': {
-                             'openssl_root%': '../openssl/x86'
-                            }
+                    'defines': [
+                        '_USE_MATH_DEFINES',
+                        'NOMINMAX'
+                    ],
+                    'msvs_settings': {
+                        'VCCLCompilerTool': {
+                            'AdditionalOptions': [ '/std:c++17', '/EHsc' ]
                         }
-                      ]
-                    ],
-                    'libraries': [ 
-                      '-l<(openssl_root)/lib/libeay32.lib',
-                    ],
-                    'include_dirs': [
-                      '<(openssl_root)/include',
-                    ],
+                    }
                 }]
             ]
         }

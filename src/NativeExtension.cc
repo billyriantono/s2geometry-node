@@ -1,4 +1,4 @@
-#include <node.h>
+#include <nan.h>
 #include "point.h"
 #include "latlng.h"
 #include "cellid.h"
@@ -9,20 +9,20 @@
 #include "angle.h"
 #include "regioncoverer.h"
 
+namespace s2geo {
 
-using namespace v8;
-namespace s2geo{
-void InitAll(Local<Object> exports) {
-    Point::Init(exports);
-    LatLng::Init(exports);
-    CellId::Init(exports);
-    Cap::Init(exports);
-    LatLngRect::Init(exports);
-    Cell::Init(exports);
-    Interval::Init(exports);
-    Angle::Init(exports);
-    RegionCoverer::Init(exports);
+NAN_MODULE_INIT(InitAll) {
+    Point::Init(target);
+    LatLng::Init(target);
+    CellId::Init(target);
+    Cap::Init(target);
+    LatLngRect::Init(target);
+    Cell::Init(target);
+    Interval::Init(target);
+    Angle::Init(target);
+    RegionCoverer::Init(target);
 }
 
 NODE_MODULE(NativeExtension, InitAll)
+
 }

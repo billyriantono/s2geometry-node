@@ -7,16 +7,36 @@ Bindings for the [S2 Geometry Library](https://code.google.com/p/s2-geometry-lib
 
 For usage information, see the examples in the `examples/` directory.
 
-## Windows User
-For Windows User please make sure you have installed :
-* Latest NPM Version , for make sure please run : npm install -g npm@next
-* Visual C++ Build Tools
-* Python 2.7
+## Installation Requirements
 
-## Todo List 
--. Porting More Class
--. Convert to Nan v2
--. Make  a BAT script for help Windows User checking the requirement.
+### All Platforms
+* Node.js 14.0.0 or higher
+* npm 6.0.0 or higher
+* Python 3.6+ (for node-gyp)
+
+### Windows
+* Visual Studio Build Tools 2017 or later (or full Visual Studio)
+* Windows SDK
+
+### macOS
+* Xcode Command Line Tools
+
+### Linux
+* GCC 7+ or Clang 5+
+* Make
+* Python 3.6+
+
+## Recent Updates (v2.0.0)
+* ✅ Migrated to NAN v2 for modern Node.js compatibility (14.x - 20.x)
+* ✅ Updated all dependencies to latest versions
+* ✅ Added Python 3 support for building
+* ✅ Fixed deprecated V8 API usage
+* ✅ Updated build configuration for modern operating systems
+
+## Todo List
+* Port additional S2 classes (S2CellUnion, S2Loop, S2Polyline, S2Polygon)
+* Add TypeScript definitions
+* Improve test coverage
 
 
 ## Currently Ported

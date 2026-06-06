@@ -1,198 +1,159 @@
 #include "cell.h"
 
 namespace s2geo {
-using namespace v8;
 
-Persistent<FunctionTemplate> Cell::constructor;
+Nan::Persistent<v8::FunctionTemplate> Cell::constructor;
 
-void Cell::Init(Local<Object> exports) {
-    Isolate* isolate = exports->GetIsolate();
-
-    // Prepare constructor template
-    Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-    tpl->SetClassName(String::NewFromUtf8(isolate, "S2Cell"));
+NAN_MODULE_INIT(Cell::Init) {
+    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+    tpl->SetClassName(Nan::New("S2Cell").ToLocalChecked());
     tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-    NODE_SET_PROTOTYPE_METHOD(tpl, "approxArea", ApproxArea);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "exactArea", ExactArea);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "averageArea", AverageArea);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "face", Face);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "level", Level);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "orientation", Orientation);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "isLeaf", IsLeaf);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getCapBound", GetCapBound);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getVertex", GetVertex);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "getCenter", GetCenter);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "id", Id);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "toString", ToString);
+    Nan::SetPrototypeMethod(tpl, "approxArea", ApproxArea);
+    Nan::SetPrototypeMethod(tpl, "exactArea", ExactArea);
+    Nan::SetPrototypeMethod(tpl, "averageArea", AverageArea);
+    Nan::SetPrototypeMethod(tpl, "face", Face);
+    Nan::SetPrototypeMethod(tpl, "level", Level);
+    Nan::SetPrototypeMethod(tpl, "orientation", Orientation);
+    Nan::SetPrototypeMethod(tpl, "isLeaf", IsLeaf);
+    Nan::SetPrototypeMethod(tpl, "getCapBound", GetCapBound);
+    Nan::SetPrototypeMethod(tpl, "getVertex", GetVertex);
+    Nan::SetPrototypeMethod(tpl, "getCenter", GetCenter);
+    Nan::SetPrototypeMethod(tpl, "id", Id);
+    Nan::SetPrototypeMethod(tpl, "toString", ToString);
 
-    constructor.Reset(isolate, tpl);
-    exports->Set(String::NewFromUtf8(isolate, "S2Cell"),
-               tpl->GetFunction());
+    constructor.Reset(tpl);
+
+    Nan::Set(target,
+             Nan::New("S2Cell").ToLocalChecked(),
+             Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-Cell::Cell()
-    : ObjectWrap(),
-      this_() {}
+Cell::Cell() : this_() {}
 
-void Cell::New(const FunctionCallbackInfo<Value>& args) {
-   Isolate* isolate = args.GetIsolate();
+NAN_METHOD(Cell::New) {
+    if (info.IsConstructCall()) {
+        if (info[0]->IsExternal()) {
+            v8::Local<v8::External> ext = info[0].As<v8::External>();
+            void* ptr = ext->Value();
+            Cell* ll = static_cast<Cell*>(ptr);
+            ll->Wrap(info.This());
+            info.GetReturnValue().Set(info.This());
+            return;
+        }
 
-    if (!args.IsConstructCall()) {
-        isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "Use the new operator to create instances of this object.")));
-                    return;
-    }
-    
-    if (args[0]->IsExternal()) {
-        Local<External> ext = Local<External>::Cast(args[0]);
-        void* ptr = ext->Value();
-        Cell* ll = static_cast<Cell*>(ptr);
-        ll->Wrap(args.This());
-        args.GetReturnValue().Set(args.This());
-        return;
-    }
+        if (info.Length() != 1) {
+            Nan::ThrowTypeError("(lat,lng) required.");
+            return;
+        }
 
-    if (args.Length() != 1) {
-        isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "(lat,lng) required.")));
-                    return;
+        Cell* obj = new Cell();
+        obj->Wrap(info.This());
+
+        v8::Local<v8::Object> ll = Nan::To<v8::Object>(info[0]).ToLocalChecked();
+        v8::Local<v8::FunctionTemplate> latlng = Nan::New(LatLng::constructor);
+        v8::Local<v8::FunctionTemplate> cellId = Nan::New(CellId::constructor);
+        if (latlng->HasInstance(ll)) {
+            obj->this_ = S2Cell(
+                S2CellId::FromLatLng(Nan::ObjectWrap::Unwrap<LatLng>(ll)->get()));
+        } else if (cellId->HasInstance(ll)) {
+            obj->this_ = S2Cell(Nan::ObjectWrap::Unwrap<CellId>(ll)->get());
+        } else {
+            Nan::ThrowTypeError("(lat,lng) or (cellid) required.");
+            return;
+        }
+
+        info.GetReturnValue().Set(info.This());
+    } else {
+        const int argc = 1;
+        v8::Local<v8::Value> argv[argc] = { info[0] };
+        v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+        info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked());
     }
+}
+
+v8::Local<v8::Object> Cell::CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info, S2Cell s2cell) {
+    Nan::EscapableHandleScope scope;
 
     Cell* obj = new Cell();
+    obj->this_ = s2cell;
 
-    obj->Wrap(args.This());
-    Local<Object> ll = args[0]->ToObject();
-    Local<FunctionTemplate> latlng = Local<FunctionTemplate>::New(isolate, LatLng::constructor);
-    Local<FunctionTemplate> cellId = Local<FunctionTemplate>::New(isolate, CellId::constructor);
-    if (latlng->HasInstance(ll)) {
-        obj->this_ = S2Cell(
-            S2CellId::FromLatLng(node::ObjectWrap::Unwrap<LatLng>(ll)->get()));
-    } else if (cellId->HasInstance(ll)) {
-        obj->this_ = S2Cell(node::ObjectWrap::Unwrap<CellId>(ll)->get());
-    } else {
-        isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "(lat,lng) or (cellid) required.")));
-                    return;
-    }
+    v8::Local<v8::Value> ext = Nan::New<v8::External>(obj);
+    v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+    v8::Local<v8::Object> instance = Nan::NewInstance(cons, 1, &ext).ToLocalChecked();
 
-     args.GetReturnValue().Set(args.This());
+    return scope.Escape(instance);
 }
 
-Local<Object> Cell::CreateNew(const v8::FunctionCallbackInfo<v8::Value>& args, S2Cell s2cell) {
-        Isolate* isolate = args.GetIsolate();
-        v8::TryCatch try_catch(isolate);
-        Cell* obj = new Cell();
-        obj->this_ = s2cell;
-        Local<Value> ext = External::New(isolate,obj);
-        Local<Context> context = isolate->GetCurrentContext();
-        Local<FunctionTemplate> cons = Local<FunctionTemplate>::New(isolate, constructor);
-        
-        MaybeLocal<Object> handleObject = cons->GetFunction()->NewInstance(context,1, &ext);
-        v8::String::Utf8Value exception(try_catch.Exception());
-        v8::String::Utf8Value stack_trace(try_catch.StackTrace());
-        if(handleObject.IsEmpty()){
-        if (stack_trace.length() > 0) {
-            const char* stack_trace_string = *stack_trace;
-            printf("%s\n", stack_trace_string);
-        }
-        if(exception.length() > 0){
-             const char* stack_trace_string = *exception;
-            printf("%s\n", stack_trace_string);
-        }
-        }
-        return handleObject.ToLocalChecked();
+v8::Local<v8::Object> Cell::CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info, S2CellId s2cellid) {
+    Nan::EscapableHandleScope scope;
+
+    Cell* obj = new Cell();
+    obj->this_ = S2Cell(s2cellid);
+
+    v8::Local<v8::Value> ext = Nan::New<v8::External>(obj);
+    v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+    v8::Local<v8::Object> instance = Nan::NewInstance(cons, 1, &ext).ToLocalChecked();
+
+    return scope.Escape(instance);
 }
 
-Local<Object> Cell::CreateNew(const v8::FunctionCallbackInfo<v8::Value>& args, S2CellId s2cellid) {
-        Isolate* isolate = args.GetIsolate();
-        v8::TryCatch try_catch(isolate);
-        Cell* obj = new Cell();
-        obj->this_ = S2Cell(s2cellid);
-        Local<Value> ext = External::New(isolate,obj);
-        Local<Context> context = isolate->GetCurrentContext();
-        Local<FunctionTemplate> cons = Local<FunctionTemplate>::New(isolate, constructor);
-        
-        MaybeLocal<Object> handleObject = cons->GetFunction()->NewInstance(context,1, &ext);
-        v8::String::Utf8Value exception(try_catch.Exception());
-        v8::String::Utf8Value stack_trace(try_catch.StackTrace());
-        if(handleObject.IsEmpty()){
-        if (stack_trace.length() > 0) {
-            const char* stack_trace_string = *stack_trace;
-            printf("%s\n", stack_trace_string);
-        }
-        if(exception.length() > 0){
-             const char* stack_trace_string = *exception;
-            printf("%s\n", stack_trace_string);
-        }
-        }
-        return handleObject.ToLocalChecked();
+NAN_METHOD(Cell::ApproxArea) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.ApproxArea()));
 }
 
-void Cell::ApproxArea(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.ApproxArea()));
+NAN_METHOD(Cell::ExactArea) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.ExactArea()));
 }
 
-void Cell::ExactArea(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.ExactArea()));
+NAN_METHOD(Cell::AverageArea) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.AverageArea(Nan::To<double>(info[0]).FromJust())));
+}
+NAN_METHOD(Cell::Face) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.face()));
 }
 
-void Cell::AverageArea(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.AverageArea(args[0]->ToNumber()->Value())));
-}
-void Cell::Face(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.face()));
+NAN_METHOD(Cell::Level) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.level()));
 }
 
-void Cell::Level(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.level()));
+NAN_METHOD(Cell::Orientation) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.orientation()));
 }
 
-void Cell::Orientation(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.orientation()));
+NAN_METHOD(Cell::IsLeaf) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.is_leaf()));
 }
 
-void Cell::IsLeaf(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Boolean::New(isolate,obj->this_.is_leaf()));
+NAN_METHOD(Cell::GetCapBound) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Cap::CreateNew(info, obj->this_.GetCapBound()));
 }
 
-void Cell::GetCapBound(const FunctionCallbackInfo<Value>& args) {
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Cap::CreateNew(args,obj->this_.GetCapBound()));
+NAN_METHOD(Cell::GetCenter) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Point::CreateNew(info, obj->this_.GetCenterRaw()));
 }
 
-void Cell::GetCenter(const FunctionCallbackInfo<Value>& args) {
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Point::CreateNew(args,obj->this_.GetCenterRaw()));
+NAN_METHOD(Cell::Id) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(CellId::CreateNew(info, obj->this_.id()));
 }
 
-void Cell::Id(const FunctionCallbackInfo<Value>& args) {
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(CellId::CreateNew(args,obj->this_.id()));
+NAN_METHOD(Cell::ToString) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.id().ToString().c_str()).ToLocalChecked());
 }
 
-void Cell::ToString(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(String::NewFromUtf8(isolate,obj->this_.id().ToString().c_str()));
-}
-
-void Cell::GetVertex(const FunctionCallbackInfo<Value>& args) {
-    Cell* obj = ObjectWrap::Unwrap<Cell>(args.Holder());
-    args.GetReturnValue().Set(Point::CreateNew(args,obj->this_.GetVertex(args[0]->ToNumber()->Value())));
+NAN_METHOD(Cell::GetVertex) {
+    Cell* obj = Nan::ObjectWrap::Unwrap<Cell>(info.Holder());
+    info.GetReturnValue().Set(Point::CreateNew(info, obj->this_.GetVertex(Nan::To<double>(info[0]).FromJust())));
 }
 }

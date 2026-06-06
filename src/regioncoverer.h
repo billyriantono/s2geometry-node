@@ -1,40 +1,36 @@
 #ifndef REGIONCOVERER_HPP
 #define REGIONCOVERER_HPP
 
-#include <node.h>
-#include <node_object_wrap.h>
+#include <nan.h>
 #include "s2.h"
 #include "s2regioncoverer.h"
 
 namespace s2geo {
-class RegionCoverer : public node::ObjectWrap {
+
+class RegionCoverer : public Nan::ObjectWrap {
 public:
-	RegionCoverer();
-	static v8::Persistent<v8::FunctionTemplate> constructor;
-    static void Init(v8::Local<v8::Object> exports);
-   	static v8::Local<v8::Object> CreateNew(const v8::FunctionCallbackInfo<v8::Value>& args);
+    RegionCoverer();
+    static Nan::Persistent<v8::FunctionTemplate> constructor;
+    static NAN_MODULE_INIT(Init);
+    static v8::Local<v8::Object> CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info);
 
 protected:
-	 ~RegionCoverer();
+    ~RegionCoverer();
 
-    static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static NAN_METHOD(New);
+    static NAN_METHOD(GetCovering);
 
-	
-	static void GetCovering(const v8::FunctionCallbackInfo<v8::Value>& args);
-	/*
-	static void MinLevel(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-	static void SetLevelMod(const v8::FunctionCallbackInfo<v8::Value>& args);
-  	static void LevelMod(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-	static void GetSimpleCovering(const v8::FunctionCallbackInfo<v8::Value>& args);
-	static void GetInteriorCellUnion(const v8::FunctionCallbackInfo<v8::Value>& args);
-	static void GetCellUnion(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-	static void GetInteriorCovering(const v8::FunctionCallbackInfo<v8::Value>& args);
-
-	static void GetCovering(const v8::FunctionCallbackInfo<v8::Value>& args);
-	*/
+    /*
+    static NAN_METHOD(MinLevel);
+    static NAN_METHOD(SetLevelMod);
+    static NAN_METHOD(LevelMod);
+    static NAN_METHOD(GetSimpleCovering);
+    static NAN_METHOD(GetInteriorCellUnion);
+    static NAN_METHOD(GetCellUnion);
+    static NAN_METHOD(GetInteriorCovering);
+    */
 };
+
 }
+
 #endif

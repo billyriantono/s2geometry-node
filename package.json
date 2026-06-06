@@ -1,19 +1,24 @@
 {
   "name": "s2geometry-node",
-  "version": "1.3.1",
+  "version": "2.0.0",
   "main": "index.js",
   "scripts": {
     "configure": "node-gyp configure",
     "build": "node-gyp build",
     "test": "mocha",
-    "install": "node-gyp rebuild"
+    "install": "node-gyp rebuild",
+    "rebuild": "node-gyp rebuild"
   },
   "dependencies": {
-    "bindings": "^1.2.1"
+    "bindings": "^1.5.0",
+    "nan": "^2.18.0"
   },
   "devDependencies": {
-    "mocha": "^2.2.5",
-    "node-gyp": "^3.4.0"
+    "mocha": "^10.2.0",
+    "node-gyp": "^10.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   },
   "author": "Billy Riantono <billy@riantono.com>",
   "repository": {

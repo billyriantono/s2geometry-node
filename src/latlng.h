@@ -2,32 +2,31 @@
 #define LATLNG_HPP
 
 #include "s2latlng.h"
-#include <node.h>
-#include <node_object_wrap.h>
+#include <nan.h>
 
 namespace s2geo {
-using namespace v8;
-class LatLng : public node::ObjectWrap {
+
+class LatLng : public Nan::ObjectWrap {
  public:
     LatLng();
-    static v8::Persistent<v8::FunctionTemplate> constructor;
-    static void Init(v8::Local<v8::Object> exports);
+    static Nan::Persistent<v8::FunctionTemplate> constructor;
+    static NAN_MODULE_INIT(Init);
     inline S2LatLng get() { return this_; }
-    static Local<Object> CreateNew(const v8::FunctionCallbackInfo<v8::Value>& args,S2LatLng ll);
+    static v8::Local<v8::Object> CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info, S2LatLng ll);
 
  private:
   ~LatLng();
 
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(New);
   //method
-  static void IsValid(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Normalized(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void ToPoint(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void ToString(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void Distance(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(IsValid);
+  static NAN_METHOD(Normalized);
+  static NAN_METHOD(ToPoint);
+  static NAN_METHOD(ToString);
+  static NAN_METHOD(Distance);
   //getter method
-  static void Lat(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& args);
-  static void Lng(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& args);
+  static NAN_GETTER(Lat);
+  static NAN_GETTER(Lng);
 
   S2LatLng this_;
 };

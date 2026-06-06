@@ -1,114 +1,88 @@
 #include "point.h"
 
-using namespace v8;
+namespace s2geo {
 
-namespace s2geo{
-Persistent<FunctionTemplate> Point::constructor;
+Nan::Persistent<v8::FunctionTemplate> Point::constructor;
 
-void Point::Init(Handle<Object> exports) {
-      Isolate* isolate = exports->GetIsolate();
+NAN_MODULE_INIT(Point::Init) {
+    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+    tpl->SetClassName(Nan::New("S2Point").ToLocalChecked());
+    tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-    // Prepare constructor template
-      Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-      tpl->SetClassName(String::NewFromUtf8(isolate, "S2Point"));
-      tpl->InstanceTemplate()->SetInternalFieldCount(1);
+    // Prototype methods
+    Nan::SetPrototypeMethod(tpl, "x", X);
+    Nan::SetPrototypeMethod(tpl, "y", Y);
+    Nan::SetPrototypeMethod(tpl, "z", Z);
 
-      // Prototype
-      NODE_SET_PROTOTYPE_METHOD(tpl, "x", X);
-      NODE_SET_PROTOTYPE_METHOD(tpl, "y", Y);
-      NODE_SET_PROTOTYPE_METHOD(tpl, "z", Z);
+    constructor.Reset(tpl);
 
-      constructor.Reset(isolate, tpl);
-      exports->Set(String::NewFromUtf8(isolate, "S2Point"),
-                   tpl->GetFunction());
+    Nan::Set(target,
+             Nan::New("S2Point").ToLocalChecked(),
+             Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-Point::Point()
-    : ObjectWrap(),
-      this_() {}
+Point::Point() : this_() {}
 
-void Point::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-    if (!args.IsConstructCall()) {
-        isolate->ThrowException(Exception::TypeError(
-                String::NewFromUtf8(isolate, "Use the new operator to create instances of this object.")));
+NAN_METHOD(Point::New) {
+    if (info.IsConstructCall()) {
+        if (info[0]->IsExternal()) {
+            v8::Local<v8::External> ext = info[0].As<v8::External>();
+            void* ptr = ext->Value();
+            Point* p = static_cast<Point*>(ptr);
+            p->Wrap(info.This());
+            info.GetReturnValue().Set(info.This());
             return;
-    }
+        }
 
-   if (args[0]->IsExternal()) {
-           Local<External> ext = Local<External>::Cast(args[0]);
-           void* ptr = ext->Value();
-           Point* p = static_cast<Point*>(ptr);
-           p->Wrap(args.This());
-           args.GetReturnValue().Set(args.This());
-           return;
-    }
-
-        if (args.Length() != 3) {
-        isolate->ThrowException(Exception::TypeError(
-                        String::NewFromUtf8(isolate, "(number, number, number) required")));
-                    return;
+        if (info.Length() != 3) {
+            Nan::ThrowTypeError("(number, number, number) required");
+            return;
         }
 
         Point* obj = new Point();
-
-        obj->Wrap(args.This());
+        obj->Wrap(info.This());
 
         obj->this_ = S2Point(
-            args[0]->ToNumber()->Value(),
-            args[1]->ToNumber()->Value(),
-            args[2]->ToNumber()->Value());
+            Nan::To<double>(info[0]).FromJust(),
+            Nan::To<double>(info[1]).FromJust(),
+            Nan::To<double>(info[2]).FromJust()
+        );
 
-        args.GetReturnValue().Set(args.This());
+        info.GetReturnValue().Set(info.This());
+    } else {
+        const int argc = 3;
+        v8::Local<v8::Value> argv[argc] = { info[0], info[1], info[2] };
+        v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+        info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked());
+    }
 }
 
-Local<Object> Point::CreateNew(const v8::FunctionCallbackInfo<v8::Value>& args, S2Point point) {
-        Isolate* isolate = args.GetIsolate();
-        v8::TryCatch try_catch(isolate);
-       Point* obj = new Point();
-        obj->this_ = point;
-        Local<Value> ext = External::New(isolate,obj);
-        Local<Context> context = isolate->GetCurrentContext();
-        Local<FunctionTemplate> cons = Local<FunctionTemplate>::New(isolate, constructor);
-        
-        MaybeLocal<Object> handleObject = cons->GetFunction()->NewInstance(context,1, &ext);
-        v8::String::Utf8Value exception(try_catch.Exception());
-        v8::String::Utf8Value stack_trace(try_catch.StackTrace());
-        if(handleObject.IsEmpty()){
-        if (stack_trace.length() > 0) {
-            const char* stack_trace_string = *stack_trace;
-            printf("%s\n", stack_trace_string);
-        }
-        if(exception.length() > 0){
-             const char* stack_trace_string = *exception;
-            printf("%s\n", stack_trace_string);
-        }
-        }
-        return handleObject.ToLocalChecked();
+v8::Local<v8::Object> Point::CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info, S2Point point) {
+    Nan::EscapableHandleScope scope;
+
+    Point* obj = new Point();
+    obj->this_ = point;
+
+    v8::Local<v8::Value> ext = Nan::New<v8::External>(obj);
+    v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+    v8::Local<v8::Object> instance = Nan::NewInstance(cons, 1, &ext).ToLocalChecked();
+
+    return scope.Escape(instance);
 }
 
-void Point::X(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  Point* obj = ObjectWrap::Unwrap<Point>(args.Holder());
-
-  args.GetReturnValue().Set(Number::New(isolate, obj->this_.x()));
+NAN_METHOD(Point::X) {
+    Point* obj = Nan::ObjectWrap::Unwrap<Point>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.x()));
 }
 
-void Point::Y(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  Point* obj = ObjectWrap::Unwrap<Point>(args.Holder());
-
-    args.GetReturnValue().Set(Number::New(isolate, obj->this_.y()));
+NAN_METHOD(Point::Y) {
+    Point* obj = Nan::ObjectWrap::Unwrap<Point>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.y()));
 }
 
-void Point::Z(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
- Point* obj = ObjectWrap::Unwrap<Point>(args.Holder());
-
-   args.GetReturnValue().Set(Number::New(isolate, obj->this_.z()));
+NAN_METHOD(Point::Z) {
+    Point* obj = Nan::ObjectWrap::Unwrap<Point>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.z()));
 }
+
 }

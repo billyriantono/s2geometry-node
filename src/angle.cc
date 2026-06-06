@@ -1,90 +1,83 @@
 #include "angle.h"
 
 namespace s2geo{
-using namespace v8;
 
-Persistent<FunctionTemplate> Angle::constructor;
+Nan::Persistent<v8::FunctionTemplate> Angle::constructor;
 
-void Angle::Init(Handle<Object> exports) {
-     Isolate* isolate = exports->GetIsolate();
+NAN_MODULE_INIT(Angle::Init) {
+    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+    tpl->SetClassName(Nan::New("S1Angle").ToLocalChecked());
+    tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-    // Prepare constructor template
-      Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-      tpl->SetClassName(String::NewFromUtf8(isolate, "S1Angle"));
-      tpl->InstanceTemplate()->SetInternalFieldCount(1);
+    // Prototype
+    Nan::SetPrototypeMethod(tpl, "normalize", Normalize);
 
-      // Prototype
-     NODE_SET_PROTOTYPE_METHOD(tpl, "normalize", Normalize);
+    constructor.Reset(tpl);
 
-      constructor.Reset(isolate, tpl);
-      exports->Set(String::NewFromUtf8(isolate, "S1Angle"),
-                   tpl->GetFunction());
+    Nan::Set(target,
+             Nan::New("S1Angle").ToLocalChecked(),
+             Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-Angle::Angle()
-    : ObjectWrap(),
-      this_() {}
+Angle::Angle() : this_() {}
 
-void Angle::New(const FunctionCallbackInfo<Value>& args) {
-    Isolate* isolate = args.GetIsolate();
+NAN_METHOD(Angle::New) {
+    if (info.IsConstructCall()) {
+        if (info[0]->IsExternal()) {
+            v8::Local<v8::External> ext = info[0].As<v8::External>();
+            void* ptr = ext->Value();
+            Angle* ll = static_cast<Angle*>(ptr);
+            ll->Wrap(info.This());
+            info.GetReturnValue().Set(info.This());
+            return;
+        }
 
-    if (!args.IsConstructCall()) {
-         isolate->ThrowException(Exception::TypeError(
-                String::NewFromUtf8(isolate, "Use the new operator to create instances of this object.")));
-                return;
+        if (info.Length() != 2) {
+            Nan::ThrowTypeError("(point,point) required.");
+            return;
+        }
+
+        Angle* obj = new Angle();
+        obj->Wrap(info.This());
+
+        v8::Local<v8::Object> a = Nan::To<v8::Object>(info[0]).ToLocalChecked();
+        v8::Local<v8::Object> b = Nan::To<v8::Object>(info[1]).ToLocalChecked();
+
+        v8::Local<v8::FunctionTemplate> point = Nan::New(Point::constructor);
+        if (!point->HasInstance(a) || !point->HasInstance(b)) {
+            Nan::ThrowTypeError("(point,point) required.");
+            return;
+        }
+
+        obj->this_ = S1Angle(
+            Nan::ObjectWrap::Unwrap<Point>(a)->get(),
+            Nan::ObjectWrap::Unwrap<Point>(b)->get());
+
+        info.GetReturnValue().Set(info.This());
+    } else {
+        const int argc = 2;
+        v8::Local<v8::Value> argv[argc] = { info[0], info[1] };
+        v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+        info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv).ToLocalChecked());
     }
-
-    if (args[0]->IsExternal()) {
-        Local<External> ext = Local<External>::Cast(args[0]);
-        void* ptr = ext->Value();
-        Angle* ll = static_cast<Angle*>(ptr);
-        ll->Wrap(args.This());
-        args.GetReturnValue().Set(args.This());
-        return;
-    }
-
-    if (args.Length() != 2) {
-        isolate->ThrowException(Exception::TypeError(
-                String::NewFromUtf8(isolate, "(point,point) required.")));
-                return;
-    }
-
-    Angle* obj = new Angle();
-
-    obj->Wrap(args.This());
-
-    Local<Object> a = args[0]->ToObject();
-    Local<Object> b = args[1]->ToObject();
-
-    Local<FunctionTemplate> point = Local<FunctionTemplate>::New(isolate,Point::constructor);
-    if (!point->HasInstance(a) ||
-        !point->HasInstance(b)) {
-        isolate->ThrowException(Exception::TypeError(
-                String::NewFromUtf8(isolate, "(point,point) required.")));
-                return;
-    }
-
-    obj->this_ = S1Angle(
-        node::ObjectWrap::Unwrap<Point>(a)->get(),
-        node::ObjectWrap::Unwrap<Point>(b)->get());
-
-   args.GetReturnValue().Set(args.This());
 }
 
-Local<Object> Angle::CreateNew(const FunctionCallbackInfo<Value>& args,S1Angle s1angle) {
-    Isolate* isolate = args.GetIsolate();
+v8::Local<v8::Object> Angle::CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info, S1Angle s1angle) {
+    Nan::EscapableHandleScope scope;
+
     Angle* obj = new Angle();
     obj->this_ = s1angle;
-    Local<Value> ext = External::New(isolate,obj);
-    Local<FunctionTemplate> cons = Local<FunctionTemplate>::New(isolate,constructor);
-    Local<Context> context = isolate->GetCurrentContext();
-    Local<Object> handleObject = cons->GetFunction()->NewInstance(context,1, &ext).ToLocalChecked();
-    return handleObject;
+
+    v8::Local<v8::Value> ext = Nan::New<v8::External>(obj);
+    v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+    v8::Local<v8::Object> instance = Nan::NewInstance(cons, 1, &ext).ToLocalChecked();
+
+    return scope.Escape(instance);
 }
 
-void Angle::Normalize(const FunctionCallbackInfo<Value>& args) {
-    Angle* obj = ObjectWrap::Unwrap<Angle>(args.This());
+NAN_METHOD(Angle::Normalize) {
+    Angle* obj = Nan::ObjectWrap::Unwrap<Angle>(info.Holder());
     obj->this_.Normalize();
-    args.GetReturnValue().Set(args.This());
+    info.GetReturnValue().Set(info.This());
 }
 }

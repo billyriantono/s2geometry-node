@@ -1,156 +1,128 @@
 #include "latlng.h"
 #include "point.h"
+#include <vector>
 
 namespace s2geo {
-using namespace v8;
 
-Persistent<FunctionTemplate> LatLng::constructor;
+Nan::Persistent<v8::FunctionTemplate> LatLng::constructor;
 
-void LatLng::Init(Local<Object> exports) {
-    Isolate* isolate = exports->GetIsolate();
+NAN_MODULE_INIT(LatLng::Init) {
+    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+    tpl->SetClassName(Nan::New("S2LatLng").ToLocalChecked());
+    tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-    // Prepare constructor template
-      Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-      tpl->SetClassName(String::NewFromUtf8(isolate, "S2LatLng"));
-      tpl->InstanceTemplate()->SetInternalFieldCount(1);
+    // Prototype
+    Nan::SetPrototypeMethod(tpl, "normalized", Normalized);
+    Nan::SetPrototypeMethod(tpl, "isValid", IsValid);
+    Nan::SetPrototypeMethod(tpl, "toPoint", ToPoint);
+    Nan::SetPrototypeMethod(tpl, "distance", Distance);
+    Nan::SetPrototypeMethod(tpl, "toString", ToString);
 
-      // Prototype
-      NODE_SET_PROTOTYPE_METHOD(tpl, "normalized", Normalized);
-      NODE_SET_PROTOTYPE_METHOD(tpl, "isValid", IsValid);
-      NODE_SET_PROTOTYPE_METHOD(tpl, "toPoint", ToPoint);
-      NODE_SET_PROTOTYPE_METHOD(tpl, "distance", Distance);
-      NODE_SET_PROTOTYPE_METHOD(tpl, "toString", ToString);
+    v8::Local<v8::ObjectTemplate> proto = tpl->PrototypeTemplate();
+    Nan::SetAccessor(proto, Nan::New("lat").ToLocalChecked(), Lat);
+    Nan::SetAccessor(proto, Nan::New("lng").ToLocalChecked(), Lng);
 
-      Local<ObjectTemplate> proto = tpl->PrototypeTemplate();
-      proto->SetAccessor(String::NewFromUtf8(isolate, "lat"), Lat);
-      proto->SetAccessor(String::NewFromUtf8(isolate, "lng"), Lng);
+    constructor.Reset(tpl);
 
-      constructor.Reset(isolate, tpl);
-      exports->Set(String::NewFromUtf8(isolate, "S2LatLng"),
-                   tpl->GetFunction());
+    Nan::Set(target,
+             Nan::New("S2LatLng").ToLocalChecked(),
+             Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-LatLng::LatLng()
-    : ObjectWrap(),
-      this_() {}
+LatLng::LatLng() : this_() {}
 LatLng::~LatLng() {
 }
 
-void LatLng::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-    if (!args.IsConstructCall()) {
-        isolate->ThrowException(Exception::TypeError(
-                String::NewFromUtf8(isolate, "Use the new operator to create instances of this object.")));
+NAN_METHOD(LatLng::New) {
+    if (info.IsConstructCall()) {
+        if (info[0]->IsExternal()) {
+            v8::Local<v8::External> ext = info[0].As<v8::External>();
+            void* ptr = ext->Value();
+            LatLng* ll = static_cast<LatLng*>(ptr);
+            ll->Wrap(info.This());
+            info.GetReturnValue().Set(info.This());
             return;
-    }
+        }
 
-if (args[0]->IsExternal()) {
-        Local<External> ext = Local<External>::Cast(args[0]);
-        void* ptr = ext->Value();
-        LatLng* ll = static_cast<LatLng*>(ptr);
-        ll->Wrap(args.This());
-        args.GetReturnValue().Set(args.This());
-        return;
+        LatLng* obj = new LatLng();
+        obj->Wrap(info.This());
+
+        if (info.Length() == 2) {
+            if (info[0]->IsNumber() && info[1]->IsNumber()) {
+                obj->this_ = S2LatLng::FromDegrees(
+                    Nan::To<double>(info[0]).FromJust(),
+                    Nan::To<double>(info[1]).FromJust());
+            }
+        } else if (info.Length() == 1) {
+            v8::Local<v8::Object> fromObj = Nan::To<v8::Object>(info[0]).ToLocalChecked();
+            v8::Local<v8::FunctionTemplate> point = Nan::New(Point::constructor);
+            if (point->HasInstance(fromObj)) {
+                S2Point p = Nan::ObjectWrap::Unwrap<Point>(fromObj)->get();
+                obj->this_ = S2LatLng(p);
+            } else {
+                Nan::ThrowTypeError("Use the new operator to create instances of this object.");
+                return;
+            }
+        }
+
+        info.GetReturnValue().Set(info.This());
+    } else {
+        const int argc = info.Length();
+        std::vector<v8::Local<v8::Value>> argv(argc);
+        for (int i = 0; i < argc; i++) {
+            argv[i] = info[i];
+        }
+        v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+        info.GetReturnValue().Set(Nan::NewInstance(cons, argc, argv.data()).ToLocalChecked());
     }
+}
+
+v8::Local<v8::Object> LatLng::CreateNew(const Nan::FunctionCallbackInfo<v8::Value>& info, S2LatLng ll) {
+    Nan::EscapableHandleScope scope;
 
     LatLng* obj = new LatLng();
-    obj->Wrap(args.This());
+    obj->this_ = ll;
 
-    if (args.Length() == 2) {
-        if (args[0]->IsNumber() &&
-            args[1]->IsNumber()) {
-            obj->this_ = S2LatLng::FromDegrees(
-                args[0]->ToNumber()->Value(),
-                args[1]->ToNumber()->Value());
-        }
-    } else if (args.Length() == 1) {
-        Local<Object> fromObj = args[0]->ToObject();
-        Local<FunctionTemplate> point = Local<FunctionTemplate>::New(isolate, Point::constructor);
-        if (point->HasInstance(fromObj)) {
-            S2Point p = node::ObjectWrap::Unwrap<Point>(fromObj)->get();
-            obj->this_ = S2LatLng(p);
-        } else {
-             isolate->ThrowException(Exception::TypeError(
-                            String::NewFromUtf8(isolate, "Use the new operator to create instances of this object.")));
-                        return;
-        }
-    }
+    v8::Local<v8::Value> ext = Nan::New<v8::External>(obj);
+    v8::Local<v8::Function> cons = Nan::New(constructor)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked();
+    v8::Local<v8::Object> instance = Nan::NewInstance(cons, 1, &ext).ToLocalChecked();
 
-    args.GetReturnValue().Set(args.This());
+    return scope.Escape(instance);
 }
 
-Local<Object> LatLng::CreateNew(const v8::FunctionCallbackInfo<v8::Value>& args, S2LatLng ll) {
-        Isolate* isolate = args.GetIsolate();
-        v8::TryCatch try_catch(isolate);
-       LatLng* obj = new LatLng();
-        obj->this_ = ll;
-        Local<Value> ext = External::New(isolate,obj);
-        Local<Context> context = isolate->GetCurrentContext();
-        Local<FunctionTemplate> cons = Local<FunctionTemplate>::New(isolate, constructor);
-        
-        MaybeLocal<Object> handleObject = cons->GetFunction()->NewInstance(context,1, &ext);
-        v8::String::Utf8Value exception(try_catch.Exception());
-        v8::String::Utf8Value stack_trace(try_catch.StackTrace());
-        if(handleObject.IsEmpty()){
-        if (stack_trace.length() > 0) {
-            const char* stack_trace_string = *stack_trace;
-            printf("%s\n", stack_trace_string);
-        }
-        if(exception.length() > 0){
-             const char* stack_trace_string = *exception;
-            printf("%s\n", stack_trace_string);
-        }
-        }
-        return handleObject.ToLocalChecked();
+NAN_GETTER(LatLng::Lat) {
+    LatLng* obj = Nan::ObjectWrap::Unwrap<LatLng>(info.This());
+    info.GetReturnValue().Set(Nan::New(obj->this_.lat().degrees()));
 }
 
-void LatLng::Lat(v8::Local<v8::String> property, const PropertyCallbackInfo<v8::Value>& args){
-    Isolate* isolate = args.GetIsolate();
-    LatLng* obj = ObjectWrap::Unwrap<LatLng>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.lat().degrees()));
-
+NAN_GETTER(LatLng::Lng) {
+    LatLng* obj = Nan::ObjectWrap::Unwrap<LatLng>(info.This());
+    info.GetReturnValue().Set(Nan::New(obj->this_.lng().degrees()));
 }
 
-void LatLng::Lng(v8::Local<v8::String> property, const PropertyCallbackInfo<v8::Value>& args){
-    Isolate* isolate = args.GetIsolate();
-    LatLng* obj = ObjectWrap::Unwrap<LatLng>(args.Holder());
-    args.GetReturnValue().Set(Number::New(isolate,obj->this_.lng().degrees()));
-
+NAN_METHOD(LatLng::IsValid) {
+    LatLng* obj = Nan::ObjectWrap::Unwrap<LatLng>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.is_valid()));
 }
 
-void LatLng::IsValid(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  LatLng* obj = ObjectWrap::Unwrap<LatLng>(args.Holder());
-
-  args.GetReturnValue().Set(Boolean::New(isolate, obj->this_.is_valid()));
+NAN_METHOD(LatLng::Normalized) {
+    LatLng* obj = Nan::ObjectWrap::Unwrap<LatLng>(info.Holder());
+    info.GetReturnValue().Set(LatLng::CreateNew(info, obj->this_.Normalized()));
 }
 
-void LatLng::Normalized(const FunctionCallbackInfo<Value>& args) {
-  LatLng* obj = ObjectWrap::Unwrap<LatLng>(args.Holder());
-  args.GetReturnValue().Set(LatLng::CreateNew(args,obj->this_.Normalized()));
+NAN_METHOD(LatLng::ToPoint) {
+    LatLng* obj = Nan::ObjectWrap::Unwrap<LatLng>(info.Holder());
+    info.GetReturnValue().Set(Point::CreateNew(info, obj->this_.ToPoint()));
 }
 
-void LatLng::ToPoint(const FunctionCallbackInfo<Value>& args) {
-   LatLng* obj = ObjectWrap::Unwrap<LatLng>(args.Holder());
-   args.GetReturnValue().Set(Point::CreateNew(args,obj->this_.ToPoint()));
+NAN_METHOD(LatLng::Distance) {
+    LatLng* latlng = Nan::ObjectWrap::Unwrap<LatLng>(info.Holder());
+    S2LatLng other = Nan::ObjectWrap::Unwrap<LatLng>(Nan::To<v8::Object>(info[0]).ToLocalChecked())->get();
+    info.GetReturnValue().Set(Nan::New(latlng->this_.GetDistance(other).degrees()));
 }
 
-void LatLng::Distance(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  LatLng* latlng = node::ObjectWrap::Unwrap<LatLng>(args.Holder());
-  S2LatLng other = node::ObjectWrap::Unwrap<LatLng>(args[0]->ToObject())->get();
-
-  args.GetReturnValue().Set(Number::New(isolate,latlng->this_.GetDistance(other).degrees()));
-}
-
-void LatLng::ToString(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = args.GetIsolate();
-
-  LatLng* obj = ObjectWrap::Unwrap<LatLng>(args.Holder());
-
-  args.GetReturnValue().Set(String::NewFromUtf8(isolate,obj->this_.ToStringInDegrees().c_str()));
+NAN_METHOD(LatLng::ToString) {
+    LatLng* obj = Nan::ObjectWrap::Unwrap<LatLng>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->this_.ToStringInDegrees().c_str()).ToLocalChecked());
 }
 }
