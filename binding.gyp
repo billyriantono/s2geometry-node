@@ -64,13 +64,7 @@
                             '-Wno-deprecated',
                             '-Wno-ignored-qualifiers',
                             '-Wno-absolute-value',
-                            '-Wno-unused-result',
-                            '-stdlib=libc++',
-                            '-std=c++17'
-                        ],
-                        'OTHER_LDFLAGS':[
-                            '-stdlib=libc++',
-                            '-undefined', 'dynamic_lookup'
+                            '-Wno-unused-result'
                         ],
                         'GCC_ENABLE_CPP_RTTI': 'YES',
                         'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
