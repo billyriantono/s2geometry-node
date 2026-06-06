@@ -487,6 +487,411 @@ describe('S2RegionCoverer', function () {
     });
 });
 
+describe('S2CellUnion', function () {
+    var coverer = new s2.S2RegionCoverer();
+
+    // A covering of a small cap around SF, used as input cell ids.
+    function covering() {
+        var cap = new s2.S2Cap(
+            new s2.S2LatLng(SF.lat, SF.lng).normalized().toPoint(), 0.0005);
+        return coverer.getCovering(cap, 5, 12, 20, 1);
+    }
+
+    it('is constructed from an array of S2CellId and normalizes', function () {
+        var ids = covering();
+        var union = new s2.S2CellUnion(ids);
+        assert(union.numCells() > 0);
+        // Normalization never produces more cells than the raw input.
+        assert(union.numCells() <= ids.length);
+    });
+
+    it('exposes cellId(i) and cellIds()', function () {
+        var union = new s2.S2CellUnion(covering());
+        var all = union.cellIds();
+        assert(Array.isArray(all));
+        assert.strictEqual(all.length, union.numCells());
+        assert.strictEqual(union.cellId(0).id(), all[0].id());
+    });
+
+    it('throws on out-of-range cellId index', function () {
+        var union = new s2.S2CellUnion(covering());
+        assert.throws(function () { union.cellId(union.numCells()); });
+    });
+
+    it('contains its own member cells', function () {
+        var union = new s2.S2CellUnion(covering());
+        assert.strictEqual(union.contains(union.cellId(0)), true);
+    });
+
+    it('reports containment of a point inside the covered region', function () {
+        var union = new s2.S2CellUnion(covering());
+        var p = new s2.S2LatLng(SF.lat, SF.lng).toPoint();
+        assert.strictEqual(union.contains(p), true);
+    });
+
+    it('intersects an overlapping union and supports set operations', function () {
+        var a = new s2.S2CellUnion(covering());
+        var b = new s2.S2CellUnion(covering());
+        assert.strictEqual(a.intersects(b), true);
+
+        var u = a.getUnion(b);
+        assert(u instanceof s2.S2CellUnion);
+        assert(u.numCells() > 0);
+
+        var inter = a.getIntersection(b);
+        assert(inter.numCells() > 0);
+
+        var diff = a.getDifference(b);
+        // Identical inputs -> empty difference.
+        assert.strictEqual(diff.numCells(), 0);
+    });
+
+    it('reports bounds and areas', function () {
+        var union = new s2.S2CellUnion(covering());
+        assert(union.getCapBound() instanceof s2.S2Cap);
+        assert(union.getRectBound() instanceof s2.S2LatLngRect);
+        assert(union.leafCellsCovered() > 0);
+        assert(union.approxArea() > 0);
+        assert(union.exactArea() > 0);
+        assert(union.averageBasedArea() > 0);
+    });
+
+    it('has a readable toString()', function () {
+        var union = new s2.S2CellUnion(covering());
+        assert(/^S2CellUnion\[/.test(union.toString()));
+    });
+});
+
+describe('S2Loop', function () {
+    // A small CCW square (~1 degree) near the equator, as unit-length points.
+    function squarePoints() {
+        return [
+            new s2.S2LatLng(0, 0),
+            new s2.S2LatLng(0, 1),
+            new s2.S2LatLng(1, 1),
+            new s2.S2LatLng(1, 0)
+        ].map(function (ll) { return ll.toPoint(); });
+    }
+
+    function square() {
+        return new s2.S2Loop(squarePoints());
+    }
+
+    it('constructs from an array of S2Point and is valid', function () {
+        var loop = square();
+        assert.strictEqual(loop.numVertices(), 4);
+        assert.strictEqual(loop.isValid(), true);
+    });
+
+    it('constructs from an S2Cell', function () {
+        var cell = new s2.S2Cell(new s2.S2LatLng(SF.lat, SF.lng).normalized());
+        var loop = new s2.S2Loop(cell);
+        assert.strictEqual(loop.numVertices(), 4);
+        assert.strictEqual(loop.isValid(), true);
+    });
+
+    it('exposes vertices as S2Point instances', function () {
+        var loop = square();
+        var v = loop.vertex(0);
+        assert.strictEqual(typeof v.x, 'function');
+        var len = Math.sqrt(v.x() * v.x() + v.y() * v.y() + v.z() * v.z());
+        assert(Math.abs(len - 1) < 1e-9);
+    });
+
+    it('throws on out-of-range vertex index', function () {
+        var loop = square();
+        assert.throws(function () { loop.vertex(loop.numVertices()); });
+    });
+
+    it('reports a positive area no greater than 4*Pi', function () {
+        var loop = square();
+        loop.normalize();
+        var area = loop.getArea();
+        assert(area > 0 && area <= 4 * Math.PI);
+    });
+
+    it('produces a centroid and turning angle', function () {
+        var loop = square();
+        assert(loop.getCentroid() instanceof s2.S2Point);
+        assert.strictEqual(typeof loop.getTurningAngle(), 'number');
+    });
+
+    it('contains an interior point but not an exterior one', function () {
+        var loop = square();
+        loop.normalize();
+        var inside = new s2.S2LatLng(0.5, 0.5).toPoint();
+        var outside = new s2.S2LatLng(20, 20).toPoint();
+        assert.strictEqual(loop.contains(inside), true);
+        assert.strictEqual(loop.contains(outside), false);
+    });
+
+    it('supports loop-vs-loop containment and intersection', function () {
+        var outer = new s2.S2Loop([
+            new s2.S2LatLng(0, 0),
+            new s2.S2LatLng(0, 4),
+            new s2.S2LatLng(4, 4),
+            new s2.S2LatLng(4, 0)
+        ].map(function (ll) { return ll.toPoint(); }));
+        var inner = new s2.S2Loop([
+            new s2.S2LatLng(1, 1),
+            new s2.S2LatLng(1, 3),
+            new s2.S2LatLng(3, 3),
+            new s2.S2LatLng(3, 1)
+        ].map(function (ll) { return ll.toPoint(); }));
+        outer.normalize();
+        inner.normalize();
+        assert.strictEqual(outer.contains(inner), true);
+        assert.strictEqual(outer.intersects(inner), true);
+        assert.strictEqual(outer.containsNested(inner), true);
+    });
+
+    it('compares boundaries for equality', function () {
+        var a = square();
+        var b = square();
+        assert.strictEqual(a.boundaryEquals(b), true);
+        assert.strictEqual(a.boundaryApproxEquals(b), true);
+    });
+
+    it('reports bounds and hole/sign metadata', function () {
+        var loop = square();
+        assert(loop.getCapBound() instanceof s2.S2Cap);
+        assert(loop.getRectBound() instanceof s2.S2LatLngRect);
+        assert.strictEqual(loop.depth(), 0);
+        assert.strictEqual(loop.isHole(), false);
+        assert.strictEqual(loop.sign(), 1);
+    });
+
+    it('has a readable toString()', function () {
+        assert(/^S2Loop\[/.test(square().toString()));
+    });
+});
+
+describe('S2Polyline', function () {
+    // A simple 3-vertex path along the equator.
+    function pathLatLngs() {
+        return [
+            new s2.S2LatLng(0, 0),
+            new s2.S2LatLng(0, 1),
+            new s2.S2LatLng(0, 2)
+        ];
+    }
+
+    function pathPoints() {
+        return pathLatLngs().map(function (ll) { return ll.toPoint(); });
+    }
+
+    function path() {
+        return new s2.S2Polyline(pathPoints());
+    }
+
+    it('constructs from an array of S2Point', function () {
+        var line = path();
+        assert.strictEqual(line.numVertices(), 3);
+    });
+
+    it('constructs from an array of S2LatLng', function () {
+        var line = new s2.S2Polyline(pathLatLngs());
+        assert.strictEqual(line.numVertices(), 3);
+    });
+
+    it('exposes vertices as S2Point instances', function () {
+        var v = path().vertex(1);
+        assert(v instanceof s2.S2Point);
+    });
+
+    it('throws on out-of-range vertex index', function () {
+        var line = path();
+        assert.throws(function () { line.vertex(line.numVertices()); });
+    });
+
+    it('reports a length in radians matching the spanned arc', function () {
+        var len = path().getLength();
+        // Two 1-degree segments along the equator => ~2 degrees of arc.
+        assert(Math.abs(len - 2 * Math.PI / 180) < 1e-6);
+    });
+
+    it('interpolates a unit-length midpoint', function () {
+        var p = path().interpolate(0.5);
+        var len = Math.sqrt(p.x() * p.x() + p.y() * p.y() + p.z() * p.z());
+        assert(Math.abs(len - 1) < 1e-9);
+    });
+
+    it('round-trips interpolate/unInterpolate', function () {
+        var line = path();
+        var suffix = line.getSuffix(0.5);
+        assert(suffix.point instanceof s2.S2Point);
+        assert(suffix.nextVertex >= 1 && suffix.nextVertex <= line.numVertices());
+        var f = line.unInterpolate(suffix.point, suffix.nextVertex);
+        assert(Math.abs(f - 0.5) < 1e-6);
+    });
+
+    it('projects a nearby point onto the polyline', function () {
+        var line = path();
+        var off = new s2.S2LatLng(0.1, 1).toPoint();
+        var proj = line.project(off);
+        assert(proj.point instanceof s2.S2Point);
+        assert(typeof proj.nextVertex === 'number');
+    });
+
+    it('reports right-hand-sideness', function () {
+        var line = path();
+        assert.strictEqual(typeof line.isOnRight(new s2.S2LatLng(-1, 1).toPoint()), 'boolean');
+    });
+
+    it('detects intersection with a crossing polyline', function () {
+        var line = path();
+        var crossing = new s2.S2Polyline([
+            new s2.S2LatLng(-1, 1),
+            new s2.S2LatLng(1, 1)
+        ].map(function (ll) { return ll.toPoint(); }));
+        assert.strictEqual(line.intersects(crossing), true);
+    });
+
+    it('reverses vertex order', function () {
+        var line = path();
+        var first = line.vertex(0).toArray();
+        line.reverse();
+        var last = line.vertex(line.numVertices() - 1).toArray();
+        assert.deepStrictEqual(first, last);
+    });
+
+    it('approxEquals itself', function () {
+        assert.strictEqual(path().approxEquals(path()), true);
+    });
+
+    it('reports bounds and may-intersect', function () {
+        var line = path();
+        assert(line.getCapBound() instanceof s2.S2Cap);
+        assert(line.getRectBound() instanceof s2.S2LatLngRect);
+        var cell = new s2.S2Cell(new s2.S2LatLng(0, 1));
+        assert.strictEqual(typeof line.mayIntersect(cell), 'boolean');
+    });
+
+    it('has a readable toString()', function () {
+        assert(/^S2Polyline\[/.test(path().toString()));
+    });
+});
+
+describe('S2Polygon', function () {
+    // A normalized CCW loop covering the given lat/lng square corners.
+    function loopFrom(corners) {
+        var loop = new s2.S2Loop(corners.map(function (c) {
+            return new s2.S2LatLng(c[0], c[1]).toPoint();
+        }));
+        loop.normalize();
+        return loop;
+    }
+
+    function squareLoop() {
+        return loopFrom([[0, 0], [0, 2], [2, 2], [2, 0]]);
+    }
+
+    function squarePolygon() {
+        return new s2.S2Polygon([squareLoop()]);
+    }
+
+    it('constructs from an array of S2Loop', function () {
+        var poly = squarePolygon();
+        assert.strictEqual(poly.numLoops(), 1);
+        assert.strictEqual(poly.numVertices(), 4);
+        assert.strictEqual(poly.isValid(), true);
+    });
+
+    it('constructs from an S2Cell', function () {
+        var cell = new s2.S2Cell(new s2.S2LatLng(SF.lat, SF.lng).normalized());
+        var poly = new s2.S2Polygon(cell);
+        assert.strictEqual(poly.numLoops(), 1);
+        assert.strictEqual(poly.numVertices(), 4);
+    });
+
+    it('exposes loop(k) as an S2Loop copy', function () {
+        var poly = squarePolygon();
+        var loop = poly.loop(0);
+        assert(loop instanceof s2.S2Loop);
+        assert.strictEqual(loop.numVertices(), 4);
+    });
+
+    it('throws on out-of-range loop index', function () {
+        var poly = squarePolygon();
+        assert.throws(function () { poly.loop(poly.numLoops()); });
+    });
+
+    it('reports a positive area and a centroid', function () {
+        var poly = squarePolygon();
+        assert(poly.getArea() > 0 && poly.getArea() <= 4 * Math.PI);
+        assert(poly.getCentroid() instanceof s2.S2Point);
+    });
+
+    it('contains an interior point but not an exterior one', function () {
+        var poly = squarePolygon();
+        assert.strictEqual(poly.contains(new s2.S2LatLng(1, 1).toPoint()), true);
+        assert.strictEqual(poly.contains(new s2.S2LatLng(20, 20).toPoint()), false);
+    });
+
+    it('supports polygon-vs-polygon containment and intersection', function () {
+        var big = squarePolygon();
+        var small = new s2.S2Polygon([loopFrom([[0.5, 0.5], [0.5, 1.5], [1.5, 1.5], [1.5, 0.5]])]);
+        assert.strictEqual(big.contains(small), true);
+        assert.strictEqual(big.intersects(small), true);
+    });
+
+    it('computes union, intersection, and difference', function () {
+        var a = squarePolygon();
+        var b = new s2.S2Polygon([loopFrom([[1, 1], [1, 3], [3, 3], [3, 1]])]);
+
+        var union = a.getUnion(b);
+        assert(union instanceof s2.S2Polygon);
+        assert(union.getArea() > a.getArea());
+
+        var inter = a.getIntersection(b);
+        assert(inter.getArea() > 0 && inter.getArea() < a.getArea());
+
+        var diff = a.getDifference(b);
+        assert(diff.getArea() > 0 && diff.getArea() < a.getArea());
+
+        // Disjoint polygons => empty intersection.
+        var far = new s2.S2Polygon([loopFrom([[40, 40], [40, 42], [42, 42], [42, 40]])]);
+        assert.strictEqual(a.getIntersection(far).getArea(), 0);
+    });
+
+    it('reports validity, normalization, and boundary equality', function () {
+        var a = squarePolygon();
+        var b = squarePolygon();
+        assert.strictEqual(a.isNormalized(), true);
+        assert.strictEqual(a.boundaryEquals(b), true);
+        assert.strictEqual(a.boundaryApproxEquals(b), true);
+    });
+
+    it('projects an exterior point onto the boundary', function () {
+        var poly = squarePolygon();
+        var outside = new s2.S2LatLng(1, 5).toPoint();
+        var proj = poly.project(outside);
+        assert(proj instanceof s2.S2Point);
+    });
+
+    it('builds from a cell union border', function () {
+        var coverer = new s2.S2RegionCoverer();
+        var cap = new s2.S2Cap(new s2.S2LatLng(SF.lat, SF.lng).normalized().toPoint(), 0.0005);
+        var union = new s2.S2CellUnion(coverer.getCovering(cap, 5, 12, 20, 1));
+        var poly = new s2.S2Polygon([]);
+        poly.initToCellUnionBorder(union);
+        assert(poly.numLoops() > 0);
+        assert(poly.getArea() > 0);
+    });
+
+    it('reports bounds, parent, and last descendant', function () {
+        var poly = squarePolygon();
+        assert(poly.getCapBound() instanceof s2.S2Cap);
+        assert(poly.getRectBound() instanceof s2.S2LatLngRect);
+        assert.strictEqual(poly.getParent(0), -1);
+        assert.strictEqual(poly.getLastDescendant(0), 0);
+    });
+
+    it('has a readable toString()', function () {
+        assert(/^S2Polygon\[/.test(squarePolygon().toString()));
+    });
+});
+
 describe('s2.getCovering (top-level wrapper)', function () {
     function makeRect() {
         return new s2.S2LatLngRect(

@@ -148,6 +148,166 @@ declare module 's2geometry-node' {
         ): S2CellId[];
     }
 
+    /**
+     * A region consisting of cells of various sizes, typically used to
+     * approximate another shape. Construct one from an array of S2CellId
+     * (the input is normalized) or obtain one from set operations.
+     */
+    export class S2CellUnion {
+        constructor(cellIds?: S2CellId[]);
+        /** Number of cells in the union. */
+        numCells(): number;
+        /** The i-th cell id (0 <= i < numCells()). */
+        cellId(i: number): S2CellId;
+        /** All cell ids in the union as an array. */
+        cellIds(): S2CellId[];
+        /** Containment with respect to regions (a cell contains its children). */
+        contains(other: S2CellId | S2Cell | S2Point | S2CellUnion): boolean;
+        intersects(other: S2CellId | S2CellUnion): boolean;
+        /** Union of this and another cell union. */
+        getUnion(other: S2CellUnion): S2CellUnion;
+        /** Intersection of this and another cell union. */
+        getIntersection(other: S2CellUnion): S2CellUnion;
+        /** Difference (this - other) of two cell unions. */
+        getDifference(other: S2CellUnion): S2CellUnion;
+        /** Normalize in place; returns true if the number of cells was reduced. */
+        normalize(): boolean;
+        /** Expand the union by a rim of cells at the given level. Returns this. */
+        expand(level: number): this;
+        getCapBound(): S2Cap;
+        getRectBound(): S2LatLngRect;
+        /** Number of leaf cells covered by the union. */
+        leafCellsCovered(): number;
+        averageBasedArea(): number;
+        approxArea(): number;
+        exactArea(): number;
+        toString(): string;
+    }
+
+    /**
+     * A simple spherical polygon: a single chain of vertices where the last
+     * vertex is implicitly connected to the first. Loops are CCW-oriented
+     * (interior on the left of each edge) and must have at least 3 vertices.
+     */
+    export class S2Loop {
+        constructor(vertices: S2Point[]);
+        constructor(cell: S2Cell);
+        numVertices(): number;
+        vertex(i: number): S2Point;
+        isValid(): boolean;
+        isNormalized(): boolean;
+        /** Invert if needed so the enclosed area is at most 2*Pi. Returns this. */
+        normalize(): this;
+        /** Reverse vertex order, complementing the region. Returns this. */
+        invert(): this;
+        /** Area of the loop interior, between 0 and 4*Pi. */
+        getArea(): number;
+        /** True centroid scaled by area (not unit length). */
+        getCentroid(): S2Point;
+        /** Sum of turning angles: positive if CCW, negative if CW. */
+        getTurningAngle(): number;
+        contains(other: S2Loop | S2Cell | S2Point): boolean;
+        intersects(other: S2Loop): boolean;
+        containsNested(other: S2Loop): boolean;
+        boundaryEquals(other: S2Loop): boolean;
+        boundaryApproxEquals(other: S2Loop, maxError?: number): boolean;
+        mayIntersect(cell: S2Cell): boolean;
+        getCapBound(): S2Cap;
+        getRectBound(): S2LatLngRect;
+        /** Nesting level within a containing polygon (0 = outer shell). */
+        depth(): number;
+        isHole(): boolean;
+        /** -1 if this loop is a hole, +1 otherwise. */
+        sign(): number;
+        toString(): string;
+    }
+
+    /** Result of S2Polyline#getSuffix / #project: a point plus the index of
+     *  the next polyline vertex after it. */
+    export interface PolylinePointResult {
+        point: S2Point;
+        nextVertex: number;
+    }
+
+    /**
+     * A sequence of vertices connected by geodesic edges. Adjacent vertices
+     * must not be identical or antipodal, and all vertices must be unit length.
+     */
+    export class S2Polyline {
+        constructor(vertices: S2Point[]);
+        constructor(vertices: S2LatLng[]);
+        numVertices(): number;
+        vertex(k: number): S2Point;
+        /** Total length of the polyline, in radians of arc. */
+        getLength(): number;
+        /** Centroid scaled by length (not unit length). */
+        getCentroid(): S2Point;
+        /** Unit-length point at the given fraction (0..1, clamped) of the length. */
+        interpolate(fraction: number): S2Point;
+        /** Like interpolate(), also returning the next vertex index. */
+        getSuffix(fraction: number): PolylinePointResult;
+        /** Inverse of interpolate: fraction of length at the given point. */
+        unInterpolate(point: S2Point, nextVertex: number): number;
+        /** Closest point on the polyline to the query point, plus next vertex. */
+        project(point: S2Point): PolylinePointResult;
+        /** Whether the point is on the right-hand side (needs >= 2 vertices). */
+        isOnRight(point: S2Point): boolean;
+        intersects(other: S2Polyline): boolean;
+        /** Reverse the vertex order in place. Returns this. */
+        reverse(): this;
+        approxEquals(other: S2Polyline, maxError?: number): boolean;
+        getCapBound(): S2Cap;
+        getRectBound(): S2LatLngRect;
+        mayIntersect(cell: S2Cell): boolean;
+        toString(): string;
+    }
+
+    /**
+     * A polygon consisting of zero or more CCW-oriented loops representing
+     * shells and holes. A point is inside the polygon if it is contained by an
+     * odd number of loops. Construct from an array of S2Loop (loops are cloned)
+     * or from a single S2Cell, or derive one via set operations.
+     */
+    export class S2Polygon {
+        constructor(loops: S2Loop[]);
+        constructor(cell: S2Cell);
+        numLoops(): number;
+        /** Total number of vertices across all loops. */
+        numVertices(): number;
+        /** A copy of the k-th loop. */
+        loop(k: number): S2Loop;
+        /** Area of the polygon interior, between 0 and 4*Pi. */
+        getArea(): number;
+        /** True centroid scaled by area (not unit length). */
+        getCentroid(): S2Point;
+        contains(other: S2Polygon | S2Cell | S2Point): boolean;
+        /** Containment allowing B's vertices to move up to the merge radius (radians). */
+        approxContains(other: S2Polygon, vertexMergeRadiusRadians: number): boolean;
+        intersects(other: S2Polygon): boolean;
+        /** Union of this and another polygon. */
+        getUnion(other: S2Polygon): S2Polygon;
+        /** Intersection of this and another polygon. */
+        getIntersection(other: S2Polygon): S2Polygon;
+        /** Difference (this - other) of two polygons. */
+        getDifference(other: S2Polygon): S2Polygon;
+        isValid(): boolean;
+        isNormalized(): boolean;
+        boundaryEquals(other: S2Polygon): boolean;
+        boundaryApproxEquals(other: S2Polygon, maxError?: number): boolean;
+        /** Closest boundary point if outside, else the point itself (non-empty only). */
+        project(point: S2Point): S2Point;
+        /** Reset this polygon to the outline of the given cell union. Returns this. */
+        initToCellUnionBorder(cells: S2CellUnion): this;
+        /** Index of the parent of loop k, or -1. */
+        getParent(k: number): number;
+        /** Index of the last loop contained within loop k. */
+        getLastDescendant(k: number): number;
+        getCapBound(): S2Cap;
+        getRectBound(): S2LatLngRect;
+        mayIntersect(cell: S2Cell): boolean;
+        toString(): string;
+    }
+
     /** Region types that `getCovering` accepts. */
     export type S2Region = S2LatLngRect | S2Cap | S2Cell;
 
