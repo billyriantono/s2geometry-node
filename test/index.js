@@ -341,3 +341,88 @@ describe('S2RegionCoverer', function () {
         assert(cells.length > 0);
     });
 });
+
+describe('s2.getCovering (top-level wrapper)', function () {
+    function makeRect() {
+        return new s2.S2LatLngRect(
+            new s2.S2LatLng(LA.lat, LA.lng).toPoint(),
+            new s2.S2LatLng(NY.lat, NY.lng).toPoint());
+    }
+
+    it('exposes a top-level s2.getCovering function', function () {
+        assert.strictEqual(typeof s2.getCovering, 'function');
+    });
+
+    it('defaults result_type to "cell" and returns S2Cell instances', function () {
+        var cells = s2.getCovering(makeRect(), { min: 5, max: 10, max_cells: 20, level_mod: 2 });
+        assert(Array.isArray(cells));
+        assert(cells.length > 0);
+        cells.forEach(function (c) {
+            assert.strictEqual(typeof c.level(), 'number');
+            assert.strictEqual(typeof c.id(), 'object');
+            assert(c.level() >= 5 && c.level() <= 10);
+        });
+    });
+
+    it('result_type "cellId" returns S2CellId instances', function () {
+        var ids = s2.getCovering(makeRect(), { min: 5, max: 10, max_cells: 20, result_type: 'cellId' });
+        assert(Array.isArray(ids));
+        assert(ids.length > 0);
+        ids.forEach(function (id) {
+            assert.strictEqual(typeof id.id(), 'string');
+            assert.strictEqual(typeof id.toToken(), 'string');
+        });
+    });
+
+    it('result_type "string" returns numeric id strings', function () {
+        var strs = s2.getCovering(makeRect(), { min: 5, max: 10, max_cells: 20, result_type: 'string' });
+        assert(Array.isArray(strs));
+        assert(strs.length > 0);
+        strs.forEach(function (s) {
+            assert.strictEqual(typeof s, 'string');
+            assert(/^\d+$/.test(s));
+        });
+    });
+
+    it('result_type "token" returns alphanumeric tokens', function () {
+        var tokens = s2.getCovering(makeRect(), { min: 5, max: 10, max_cells: 20, result_type: 'token' });
+        assert(Array.isArray(tokens));
+        assert(tokens.length > 0);
+        tokens.forEach(function (t) {
+            assert.strictEqual(typeof t, 'string');
+            assert(t.length > 0 && t.length <= 16);
+        });
+    });
+
+    it('result_type "point" returns S2Point instances', function () {
+        var points = s2.getCovering(makeRect(), { min: 5, max: 10, max_cells: 20, result_type: 'point' });
+        assert(Array.isArray(points));
+        assert(points.length > 0);
+        points.forEach(function (p) {
+            assert.strictEqual(typeof p.x(), 'number');
+            assert.strictEqual(typeof p.y(), 'number');
+            assert.strictEqual(typeof p.z(), 'number');
+        });
+    });
+
+    it('works with no options (uses defaults)', function () {
+        var cells = s2.getCovering(makeRect());
+        assert(Array.isArray(cells));
+        assert(cells.length > 0);
+    });
+
+    it('also accepts S2Cap and S2Cell regions', function () {
+        var cap = new s2.S2Cap(new s2.S2LatLng(LA.lat, LA.lng).normalized().toPoint(), 0.001);
+        var cellRegion = new s2.S2Cell(new s2.S2LatLng(SF.lat, SF.lng));
+        var fromCap = s2.getCovering(cap, { min: 5, max: 10, max_cells: 20, result_type: 'token' });
+        var fromCell = s2.getCovering(cellRegion, { min: 5, max: 10, max_cells: 20, result_type: 'token' });
+        assert(fromCap.length > 0);
+        assert(fromCell.length > 0);
+    });
+
+    it('throws on unknown result_type', function () {
+        assert.throws(function () {
+            s2.getCovering(makeRect(), { result_type: 'banana' });
+        }, /Unknown result_type/);
+    });
+});
