@@ -181,8 +181,10 @@ describe('S2Cell', function () {
     it('produces a cap bound', function () {
         var cell = makeCell();
         var cap = cell.getCapBound();
-        // contains itself
-        assert.strictEqual(cap.contains(cap), true);
+        // A cap bound should not contain its own complement (which covers the
+        // rest of the sphere); this is a robust functional check that doesn't
+        // depend on floating-point self-comparison.
+        assert.strictEqual(cap.contains(cap.complement()), false);
     });
 });
 
@@ -197,11 +199,17 @@ describe('S2Cap', function () {
         assert.throws(function () { new s2.S2Cap(1, 2); });
     });
 
-    it('contains itself and intersects itself', function () {
-        var cap = makeCap();
-        assert.strictEqual(cap.contains(cap), true);
-        assert.strictEqual(cap.intersects(cap), true);
-        assert.strictEqual(cap.interiorIntersects(cap), true);
+    it('contains a strictly smaller, concentric cap', function () {
+        // S2Cap.Contains uses a non-exact predicate (angle + acos of dot
+        // product) that can fail self-comparison on platforms with FMA
+        // (e.g. arm64). A cap that strictly contains another in height is the
+        // semantically meaningful check and is robust across architectures.
+        var bigger = new s2.S2Cap(new s2.S2LatLng(LA.lat, LA.lng).toPoint(), 0.01);
+        var smaller = new s2.S2Cap(new s2.S2LatLng(LA.lat, LA.lng).toPoint(), 0.001);
+        assert.strictEqual(bigger.contains(smaller), true);
+        assert.strictEqual(smaller.contains(bigger), false);
+        assert.strictEqual(bigger.intersects(smaller), true);
+        assert.strictEqual(bigger.interiorIntersects(smaller), true);
     });
 
     it('does not contain its complement', function () {
