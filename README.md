@@ -51,6 +51,24 @@ For usage information, see the examples in the `examples/` directory.
 
 ## [Documentation: API.md](API.md)
 
+## Using with Electron
+
+This addon is built with [NAN](https://github.com/nodejs/nan), which is ABI-tied to a specific Node.js version. The binary produced by `npm install` targets your system Node, so loading it from Electron will fail with:
+
+```
+A dynamic link library (DLL) initialization routine failed
+```
+
+To use the addon inside an Electron app, rebuild it against Electron's headers after install:
+
+```bash
+npm install s2geometry-node
+npm install --save-dev @electron/rebuild
+npx electron-rebuild -f -w s2geometry-node
+```
+
+Run `electron-rebuild` again whenever you upgrade Electron. (Migrating this addon from NAN to Node-API would remove this rebuild step — tracked as future work.)
+
 ## Notes
 
 Some of the S2 API is not wrapped because it isn't meant to be exposed in this way, and is blocked from wrapping by DISALLOW_COPY_AND_ASSIGN.
