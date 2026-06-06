@@ -226,12 +226,32 @@ describe('S2Cap', function () {
 });
 
 describe('S2LatLngRect', function () {
-    // The constructor expects S2Points (see examples/index.js) despite the name.
+    // The constructor accepts either S2LatLng or S2Point endpoints; we use
+    // .toPoint() here to also exercise the Point->LatLng auto-conversion path.
     function makeRect() {
         return new s2.S2LatLngRect(
             new s2.S2LatLng(LA.lat, LA.lng).toPoint(),
             new s2.S2LatLng(NY.lat, NY.lng).toPoint());
     }
+
+    // Regression test for issue #23: prior to the latlngrect.cc rewrite, an
+    // inverted HasInstance check accepted non-LatLng inputs and unwrapped them
+    // as LatLng (UB), producing rects whose covering landed somewhere in
+    // Africa instead of over North America. Verify a US-spanning rect lands
+    // where it should regardless of whether endpoints are LatLng or Point.
+    it('LA->NY rect centers over North America (#23 regression)', function () {
+        var fromLatLng = new s2.S2LatLngRect(
+            new s2.S2LatLng(LA.lat, LA.lng),
+            new s2.S2LatLng(NY.lat, NY.lng));
+        var fromPoint = new s2.S2LatLngRect(
+            new s2.S2LatLng(LA.lat, LA.lng).toPoint(),
+            new s2.S2LatLng(NY.lat, NY.lng).toPoint());
+        [fromLatLng, fromPoint].forEach(function (rect) {
+            var c = rect.center();
+            assert(c.lat > 30 && c.lat < 45, 'lat should be ~37, got ' + c.lat);
+            assert(c.lng > -120 && c.lng < -70, 'lng should be ~-96, got ' + c.lng);
+        });
+    });
 
     it('reports area > 0 and is valid/non-empty', function () {
         var rect = makeRect();
