@@ -337,6 +337,7 @@ NAN_METHOD(Polygon::GetLastDescendant) {
         return;
     }
     int k = Nan::To<int32_t>(info[0]).FromJust();
+    // S2Polygon::GetLastDescendant accepts -1 to query the entire polygon tree.
     if (k < -1 || k >= obj->this_->num_loops()) {
         Nan::ThrowRangeError("loop index out of range");
         return;
