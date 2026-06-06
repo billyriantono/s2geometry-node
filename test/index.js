@@ -234,6 +234,20 @@ describe('S2LatLngRect', function () {
             new s2.S2LatLng(NY.lat, NY.lng).toPoint());
     }
 
+    // Regression test for issue #22: prior to the latlngrect.cc rewrite, the
+    // documented constructor `new S2LatLngRect(latlng, latlng)` didn't work
+    // (the inverted HasInstance check threw on actual LatLng inputs).
+    it('accepts two S2LatLng endpoints (#22 regression)', function () {
+        var p1 = new s2.S2LatLng(44.0378862, 10.0458712);
+        var p2 = new s2.S2LatLng(45, 11);
+        var rect = new s2.S2LatLngRect(p1, p2);
+        assert.strictEqual(rect.isValid(), true);
+        assert.strictEqual(rect.isEmpty(), false);
+        assert.strictEqual(rect.contains(p1), true);
+        assert.strictEqual(rect.contains(p2), true);
+        assert.strictEqual(rect.contains(new s2.S2LatLng(0, 0)), false);
+    });
+
     // Regression test for issue #23: prior to the latlngrect.cc rewrite, an
     // inverted HasInstance check accepted non-LatLng inputs and unwrapped them
     // as LatLng (UB), producing rects whose covering landed somewhere in
