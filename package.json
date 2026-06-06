@@ -2,6 +2,17 @@
   "name": "s2geometry-node",
   "version": "2.0.0",
   "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "binding.gyp",
+    "src/",
+    "geometry/",
+    "viewfinder/",
+    "API.md",
+    "README.md"
+  ],
   "scripts": {
     "configure": "node-gyp configure",
     "build": "node-gyp build",
