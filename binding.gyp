@@ -62,28 +62,27 @@
                             '-Wno-ignored-qualifiers',
                             '-Wno-absolute-value',
                             '-Wno-unused-result',
-                            '-Wno-dynamic-class-memaccess',
                             '-DARCH_K8 -DS2_USE_EXACTFLOAT',
                             '-stdlib=libc++',
-                            '-std=c++11'
+                            '-std=c++17'
                         ],
                         'OTHER_LDFLAGS':[
-                            '-flat_namespace -undefined suppress',
-                            '-stdlib=libc++',
-                            '-std=c++11'
+                            '-stdlib=libc++'
                         ],
                         'GCC_ENABLE_CPP_RTTI': 'YES',
                         'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
-                        'MACOSX_DEPLOYMENT_TARGET': '10.7',
+                        'MACOSX_DEPLOYMENT_TARGET': '10.15',
                     }
                 }],
                 ['OS=="linux"', {
                     'cflags_cc' : [
-                    '-Wno-deprecated',
-                    '-Wno-ignored-qualifiers',
-                    '-DARCH_K8 -DS2_USE_EXACTFLOAT',
-                    '-std=c++11'
+                        '-Wno-deprecated',
+                        '-Wno-ignored-qualifiers',
+                        '-DARCH_K8',
+                        '-DS2_USE_EXACTFLOAT',
+                        '-std=c++17'
                     ],
+                    'cflags_cc!': [ '-fno-exceptions', '-fno-rtti' ],
                 }],
                 ['OS=="win"', {
                     'defines': [
