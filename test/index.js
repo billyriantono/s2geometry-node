@@ -885,6 +885,15 @@ describe('S2Polygon', function () {
         assert(poly.getRectBound() instanceof s2.S2LatLngRect);
         assert.strictEqual(poly.getParent(0), -1);
         assert.strictEqual(poly.getLastDescendant(0), 0);
+        assert.strictEqual(poly.getLastDescendant(-1), 0);
+    });
+
+    it('validates parent/descendant loop indices', function () {
+        var poly = squarePolygon();
+        assert.throws(function () { poly.getParent(-1); }, /loop index out of range/);
+        assert.throws(function () { poly.getParent(1); }, /loop index out of range/);
+        assert.throws(function () { poly.getLastDescendant(-2); }, /loop index out of range/);
+        assert.throws(function () { poly.getLastDescendant(1); }, /loop index out of range/);
     });
 
     it('has a readable toString()', function () {

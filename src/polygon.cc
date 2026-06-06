@@ -318,13 +318,29 @@ NAN_METHOD(Polygon::InitToCellUnionBorder) {
 
 NAN_METHOD(Polygon::GetParent) {
     Polygon* obj = Nan::ObjectWrap::Unwrap<Polygon>(info.Holder());
+    if (info.Length() < 1 || !info[0]->IsNumber()) {
+        Nan::ThrowTypeError("(k:number) required");
+        return;
+    }
     int k = Nan::To<int32_t>(info[0]).FromJust();
+    if (k < 0 || k >= obj->this_->num_loops()) {
+        Nan::ThrowRangeError("loop index out of range");
+        return;
+    }
     info.GetReturnValue().Set(Nan::New(obj->this_->GetParent(k)));
 }
 
 NAN_METHOD(Polygon::GetLastDescendant) {
     Polygon* obj = Nan::ObjectWrap::Unwrap<Polygon>(info.Holder());
+    if (info.Length() < 1 || !info[0]->IsNumber()) {
+        Nan::ThrowTypeError("(k:number) required");
+        return;
+    }
     int k = Nan::To<int32_t>(info[0]).FromJust();
+    if (k < -1 || k >= obj->this_->num_loops()) {
+        Nan::ThrowRangeError("loop index out of range");
+        return;
+    }
     info.GetReturnValue().Set(Nan::New(obj->this_->GetLastDescendant(k)));
 }
 
