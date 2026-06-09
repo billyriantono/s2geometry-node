@@ -8,6 +8,10 @@
 #include "interval.h"
 #include "angle.h"
 #include "regioncoverer.h"
+#include "cellunion.h"
+#include "loop.h"
+#include "polyline.h"
+#include "polygon.h"
 
 namespace s2geo {
 
@@ -21,6 +25,10 @@ NAN_MODULE_INIT(InitAll) {
     Interval::Init(target);
     Angle::Init(target);
     RegionCoverer::Init(target);
+    CellUnion::Init(target);
+    Loop::Init(target);
+    Polyline::Init(target);
+    Polygon::Init(target);
 }
 
 NODE_MODULE(NativeExtension, InitAll)
